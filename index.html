@@ -1,68 +1,221 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>Family Notepad</title>
+  <title>Заметки</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <style>
-    :root {
-      --bg: var(--tg-theme-bg-color, #121212);
-      --card-bg: var(--tg-theme-secondary-bg-color, #1e1e1e);
-      --text: var(--tg-theme-text-color, #ffffff);
-      --hint: var(--tg-theme-hint-color, #888888);
-      --btn: var(--tg-theme-button-color, #2481cc);
-      --btn-text: var(--tg-theme-button-text-color, #ffffff);
-      --danger: #cf6679;
-    }
+    @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800&display=swap');
+    
+    * { box-sizing: border-box; }
+    
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-      margin: 0;
+      font-family: 'Nunito', sans-serif;
+      margin: 0; 
       padding: 16px;
-      background-color: var(--bg);
-      color: var(--text);
+      /* Сочный темный градиент */
+      background: linear-gradient(135deg, #0f2027, #203a43, #2c5364); 
+      color: #ffffff;
+      min-height: 100vh;
     }
-    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
-    .badge { background-color: var(--btn); color: var(--btn-text); padding: 4px 10px; border-radius: 12px; font-size: 13px; }
-    .tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+    
+    .header { 
+      display: flex; 
+      justify-content: space-between; 
+      align-items: center; 
+      margin-bottom: 24px; 
+    }
+    
+    h2 { 
+      margin: 0; 
+      font-weight: 800; 
+      font-size: 26px; 
+      letter-spacing: 0.5px; 
+      text-shadow: 0 2px 4px rgba(0,0,0,0.3); 
+    }
+    
+    .badge {
+      background: linear-gradient(135deg, #00c6ff, #0072ff);
+      color: white; 
+      padding: 6px 14px; 
+      border-radius: 20px; 
+      font-size: 13px; 
+      font-weight: 800;
+      box-shadow: 0 4px 15px rgba(0, 114, 255, 0.4);
+    }
+    
+    /* Переключатель вкладок */
+    .tabs { 
+      display: flex; 
+      gap: 8px; 
+      margin-bottom: 24px; 
+      background: rgba(0,0,0,0.2); 
+      padding: 6px; 
+      border-radius: 14px; 
+    }
+    
     .tab-btn {
-      flex: 1; padding: 10px; border: none; border-radius: 8px;
-      background: var(--card-bg); color: var(--hint); font-weight: 600; cursor: pointer;
+      flex: 1; 
+      padding: 12px; 
+      border: none; 
+      border-radius: 10px;
+      background: transparent; 
+      color: rgba(255,255,255,0.5); 
+      font-weight: 800; 
+      font-size: 15px;
+      cursor: pointer; 
+      transition: 0.3s;
     }
-    .tab-btn.active { background: var(--btn); color: var(--btn-text); }
-    .create-box { display: flex; gap: 8px; margin-bottom: 16px; }
+    
+    .tab-btn.active { 
+      background: rgba(255,255,255,0.15); 
+      color: #fff; 
+      box-shadow: 0 4px 10px rgba(0,0,0,0.2); 
+    }
+    
+    /* Поле создания темы */
+    .create-box { 
+      display: flex; 
+      gap: 12px; 
+      margin-bottom: 24px; 
+    }
+    
     .create-box input {
-      flex: 1; padding: 10px 14px; border-radius: 8px; border: 1px solid transparent;
-      background: var(--card-bg); color: var(--text); outline: none; font-size: 14px;
+      flex: 1; 
+      padding: 14px 16px; 
+      border-radius: 14px; 
+      border: 1px solid rgba(255,255,255,0.1);
+      background: rgba(255,255,255,0.05); 
+      color: #fff; 
+      outline: none; 
+      font-size: 15px; 
+      transition: 0.3s;
     }
+    
+    .create-box input:focus { 
+      border-color: #00c6ff; 
+      background: rgba(255,255,255,0.1); 
+    }
+    
     .create-box button {
-      padding: 10px 16px; border: none; border-radius: 8px;
-      background: var(--btn); color: var(--btn-text); font-weight: bold; cursor: pointer;
+      padding: 0 22px; 
+      border: none; 
+      border-radius: 14px; 
+      font-size: 22px;
+      background: linear-gradient(135deg, #11998e, #38ef7d); 
+      color: white; 
+      font-weight: bold; 
+      cursor: pointer;
+      box-shadow: 0 4px 15px rgba(56, 239, 125, 0.4); 
+      transition: 0.2s;
     }
-    .card { background: var(--card-bg); padding: 14px; border-radius: 10px; margin-bottom: 12px; }
-    .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 8px; }
-    .card-title { font-weight: 600; font-size: 16px; }
-    .del-btn { background: none; border: none; color: var(--danger); font-size: 13px; cursor: pointer; padding: 0; }
-
-    /* Дизайн чеклиста */
-    .list-item { display: flex; align-items: center; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05); cursor: pointer; transition: 0.2s; }
+    
+    .create-box button:active { transform: scale(0.95); }
+    
+    /* Стеклянные карточки */
+    .card {
+      background: rgba(255, 255, 255, 0.05); 
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,0.1); 
+      border-radius: 18px; 
+      padding: 18px; 
+      margin-bottom: 16px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+    }
+    
+    .card-header { 
+      display: flex; 
+      justify-content: space-between; 
+      align-items: center; 
+      margin-bottom: 16px; 
+      border-bottom: 1px solid rgba(255,255,255,0.1); 
+      padding-bottom: 12px; 
+    }
+    
+    .card-title { font-weight: 800; font-size: 18px; color: #e0f2fe; }
+    
+    .del-btn { 
+      background: rgba(255, 75, 75, 0.15); 
+      border: 1px solid rgba(255, 75, 75, 0.3); 
+      color: #ff4b4b; 
+      font-size: 12px; 
+      font-weight: bold; 
+      border-radius: 8px; 
+      padding: 6px 12px; 
+      cursor: pointer; 
+      transition: 0.2s; 
+    }
+    
+    /* Чеклист */
+    .list-item { 
+      display: flex; 
+      align-items: center; 
+      padding: 12px 0; 
+      border-bottom: 1px solid rgba(255,255,255,0.03); 
+      cursor: pointer; 
+      transition: 0.2s; 
+    }
+    
     .list-item:last-child { border-bottom: none; }
-    .checkbox { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--hint); margin-right: 12px; display: flex; justify-content: center; align-items: center; position: relative; }
-    .list-item.done .checkbox { background: var(--btn); border-color: var(--btn); }
-    .list-item.done .checkbox::after { content: '✓'; color: white; font-size: 14px; font-weight: bold; position: absolute; }
-    .list-item.done .item-text { text-decoration: line-through; color: var(--hint); }
-    .item-text { flex: 1; font-size: 15px; word-break: break-word; }
-
-    /* Поле добавления пункта */
-    .add-item-box { display: flex; margin-top: 12px; gap: 8px; }
-    .add-item-box input { flex: 1; padding: 10px 12px; border-radius: 8px; border: 1px solid transparent; background: rgba(0,0,0,0.15); color: var(--text); outline: none; font-size: 14px; }
-    .add-item-box input:focus { border-color: var(--btn); }
-    .add-btn { background: var(--btn); color: var(--btn-text); border: none; border-radius: 8px; padding: 0 16px; font-weight: bold; cursor: pointer;}
+    
+    .checkbox { 
+      width: 24px; 
+      height: 24px; 
+      border-radius: 6px; 
+      border: 2px solid rgba(255,255,255,0.3); 
+      margin-right: 14px; 
+      display: flex; 
+      justify-content: center; 
+      align-items: center; 
+      position: relative; 
+      transition: 0.2s; 
+    }
+    
+    .list-item.done .checkbox { background: #00c6ff; border-color: #00c6ff; }
+    .list-item.done .checkbox::after { content: '✔'; color: white; font-size: 14px; position: absolute; }
+    .list-item.done .item-text { text-decoration: line-through; color: rgba(255,255,255,0.3); }
+    .item-text { flex: 1; font-size: 16px; transition: 0.2s; }
+    
+    /* Добавление пункта в чеклист */
+    .add-item-box { display: flex; margin-top: 16px; gap: 8px; }
+    .add-item-box input { 
+      flex: 1; 
+      padding: 12px 14px; 
+      border-radius: 12px; 
+      border: 1px solid transparent; 
+      background: rgba(0,0,0,0.2); 
+      color: #fff; 
+      outline: none; 
+      font-size: 14px; 
+    }
+    .add-item-box input:focus { border-color: rgba(255,255,255,0.2); }
+    
+    .add-btn { 
+      background: rgba(255,255,255,0.1); 
+      color: #fff; 
+      border: 1px solid rgba(255,255,255,0.1); 
+      border-radius: 12px; 
+      padding: 0 18px; 
+      font-weight: bold; 
+      font-size: 18px;
+      cursor: pointer; 
+      transition: 0.2s;
+    }
+    .add-btn:active { background: rgba(255,255,255,0.2); }
+    
+    .empty-state { 
+      text-align: center; 
+      color: rgba(255,255,255,0.5); 
+      padding: 40px 20px; 
+      font-size: 16px; 
+    }
   </style>
 </head>
 <body>
   <div class="header">
-    <h2 style="margin: 0;">Задачи & Покупки</h2>
+    <h2>Заметки</h2>
     <span class="badge" id="user-badge">Загрузка...</span>
   </div>
 
@@ -72,14 +225,13 @@
   </div>
 
   <div class="create-box">
-    <input type="text" id="new-topic" placeholder="Название новой темы (Покупки)...">
+    <input type="text" id="new-topic" placeholder="Название новой темы...">
     <button onclick="createTopic()">+</button>
   </div>
 
   <div id="notes-container"></div>
 
   <script>
-    // ТВОЙ ТУННЕЛЬ
     const API_BASE = "https://profit-effectiveness-diet-effective.trycloudflare.com";
 
     const tg = window.Telegram.WebApp;
@@ -87,7 +239,7 @@
     tg.expand();
 
     const currentUserId = tg.initDataUnsafe?.user?.id || 547418372;
-    const userName = tg.initDataUnsafe?.user?.first_name || "Nikolai";
+    const userName = tg.initDataUnsafe?.user?.first_name || "Николай";
     document.getElementById("user-badge").textContent = userName;
 
     let isSharedTab = true;
@@ -107,10 +259,11 @@
           allNotes = await res.json();
           renderNotes();
         }
-      } catch (err) { console.error(err); }
+      } catch (err) { 
+        console.error("Ошибка загрузки:", err); 
+      }
     }
 
-    // Парсер, который спасает старые кривые записи и превращает их в чеклист
     function parseNotes(raw) {
       if (!raw) return [];
       try { return JSON.parse(raw); }
@@ -125,7 +278,7 @@
       const filtered = allNotes.filter(n => n.is_shared === isSharedTab);
 
       if (filtered.length === 0) {
-        container.innerHTML = `<div style="text-align:center; color: var(--hint); margin-top: 30px;">Пока пусто. Добавьте новую тему выше!</div>`;
+        container.innerHTML = `<div class="empty-state">Пока пусто. Добавьте новую тему выше ☝️</div>`;
         return;
       }
 
@@ -172,7 +325,7 @@
       const items = parseNotes(note.content);
       items[itemIdx].done = !items[itemIdx].done;
       note.content = JSON.stringify(items);
-      renderNotes(); // Мгновенное обновление визуала
+      renderNotes(); 
       await saveNoteContent(noteId, items);
     }
 
@@ -180,11 +333,13 @@
       const input = document.getElementById(`add-input-${noteId}`);
       const text = input.value.trim();
       if (!text) return;
+      
       const note = allNotes.find(n => n.id === noteId);
       const items = parseNotes(note.content);
       items.push({ text: text, done: false });
       note.content = JSON.stringify(items);
       input.value = '';
+      
       renderNotes();
       await saveNoteContent(noteId, items);
     }
@@ -203,7 +358,10 @@
           headers: { "Content-Type": "application/json", "x-user-id": currentUserId },
           body: JSON.stringify({ title: title, is_shared: isSharedTab, content: "[]" })
         });
-        if (res.ok) { input.value = ""; await fetchNotes(); }
+        if (res.ok) { 
+          input.value = ""; 
+          await fetchNotes(); 
+        }
       } catch (err) {}
     }
 
