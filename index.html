@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Family Notes</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      margin: 0;
+      padding: 16px;
+      background-color: var(--tg-theme-bg-color, #181818);
+      color: var(--tg-theme-text-color, #ffffff);
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+    .badge {
+      background-color: var(--tg-theme-button-color, #2481cc);
+      color: var(--tg-theme-button-text-color, #ffffff);
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 500;
+    }
+    .tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    .tab-btn {
+      flex: 1;
+      padding: 10px;
+      border: none;
+      border-radius: 8px;
+      background: var(--tg-theme-secondary-bg-color, #282828);
+      color: var(--tg-theme-hint-color, #aaaaaa);
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .tab-btn.active {
+      background: var(--tg-theme-button-color, #2481cc);
+      color: var(--tg-theme-button-text-color, #ffffff);
+    }
+    .card {
+      background: var(--tg-theme-secondary-bg-color, #242424);
+      padding: 14px;
+      border-radius: 10px;
+      margin-bottom: 12px;
+    }
+    .card h3 {
+      margin: 0 0 6px 0;
+      font-size: 16px;
+    }
+    .card p {
+      margin: 0;
+      font-size: 14px;
+      color: var(--tg-theme-hint-color, #aaaaaa);
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h2 style="margin: 0;">Family Notepad</h2>
+    <span class="badge" id="user-badge">Loading...</span>
+  </div>
+
+  <div class="tabs">
+    <button class="tab-btn active" id="btn-shared" onclick="switchTab('shared')">Shared</button>
+    <button class="tab-btn" id="btn-personal" onclick="switchTab('personal')">Personal</button>
+  </div>
+
+  <div id="content">
+    <div class="card">
+      <h3>🐾 Vet Checkup</h3>
+      <p>Спросить про витамины и график прививок.</p>
+    </div>
+    <div class="card">
+      <h3>🛒 Shopping List</h3>
+      <p>Корм для собаки, фильтр для воды.</p>
+    </div>
+  </div>
+
+  <script>
+    const tg = window.Telegram.WebApp;
+    tg.ready();
+    tg.expand();
+
+    const user = tg.initDataUnsafe?.user;
+    const badge = document.getElementById('user-badge');
+    if (user) {
+      badge.textContent = user.first_name || 'Authorized';
+    } else {
+      badge.textContent = 'Guest Mode';
+    }
+
+    function switchTab(type) {
+      document.getElementById('btn-shared').classList.toggle('active', type === 'shared');
+      document.getElementById('btn-personal').classList.toggle('active', type === 'personal');
+      
+      const content = document.getElementById('content');
+      if (type === 'personal') {
+        content.innerHTML = `
+          <div class="card">
+            <h3>🔒 Personal Notes</h3>
+            <p>Личные заметки и идеи (видны только вам).</p>
+          </div>
+        `;
+      } else {
+        content.innerHTML = `
+          <div class="card">
+            <h3>🐾 Vet Checkup</h3>
+            <p>Спросить про витамины и график прививок.</p>
+          </div>
+          <div class="card">
+            <h3>🛒 Shopping List</h3>
+            <p>Корм для собаки, фильтр для воды.</p>
+          </div>
+        `;
+      }
+    }
+  </script>
+</body>
+</html>
