@@ -3,15 +3,24 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>Family Notes</title>
+  <title>Family Notepad</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <style>
+    :root {
+      --bg: var(--tg-theme-bg-color, #121212);
+      --card-bg: var(--tg-theme-secondary-bg-color, #1e1e1e);
+      --text: var(--tg-theme-text-color, #ffffff);
+      --hint: var(--tg-theme-hint-color, #888888);
+      --btn: var(--tg-theme-button-color, #2481cc);
+      --btn-text: var(--tg-theme-button-text-color, #ffffff);
+      --danger: #cf6679;
+    }
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
       margin: 0;
       padding: 16px;
-      background-color: var(--tg-theme-bg-color, #181818);
-      color: var(--tg-theme-text-color, #ffffff);
+      background-color: var(--bg);
+      color: var(--text);
     }
     .header {
       display: flex;
@@ -20,12 +29,11 @@
       margin-bottom: 16px;
     }
     .badge {
-      background-color: var(--tg-theme-button-color, #2481cc);
-      color: var(--tg-theme-button-text-color, #ffffff);
+      background-color: var(--btn);
+      color: var(--btn-text);
       padding: 4px 10px;
       border-radius: 12px;
       font-size: 13px;
-      font-weight: 500;
     }
     .tabs {
       display: flex;
@@ -37,92 +45,239 @@
       padding: 10px;
       border: none;
       border-radius: 8px;
-      background: var(--tg-theme-secondary-bg-color, #282828);
-      color: var(--tg-theme-hint-color, #aaaaaa);
+      background: var(--card-bg);
+      color: var(--hint);
       font-weight: 600;
       cursor: pointer;
     }
     .tab-btn.active {
-      background: var(--tg-theme-button-color, #2481cc);
-      color: var(--tg-theme-button-text-color, #ffffff);
+      background: var(--btn);
+      color: var(--btn-text);
+    }
+    .create-box {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    input[type="text"] {
+      flex: 1;
+      padding: 10px 14px;
+      border-radius: 8px;
+      border: 1px solid #333;
+      background: var(--card-bg);
+      color: var(--text);
+      outline: none;
+      font-size: 14px;
+    }
+    button.action-btn {
+      padding: 10px 16px;
+      border: none;
+      border-radius: 8px;
+      background: var(--btn);
+      color: var(--btn-text);
+      font-weight: bold;
+      cursor: pointer;
     }
     .card {
-      background: var(--tg-theme-secondary-bg-color, #242424);
+      background: var(--card-bg);
       padding: 14px;
       border-radius: 10px;
       margin-bottom: 12px;
     }
-    .card h3 {
-      margin: 0 0 6px 0;
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .card-title {
+      font-weight: 600;
       font-size: 16px;
     }
-    .card p {
-      margin: 0;
-      font-size: 14px;
-      color: var(--tg-theme-hint-color, #aaaaaa);
+    .del-btn {
+      background: none;
+      border: none;
+      color: var(--danger);
+      font-size: 13px;
+      cursor: pointer;
+    }
+    textarea {
+      width: 100%;
+      box-sizing: border-box;
+      min-height: 80px;
+      background: rgba(0,0,0,0.2);
+      border: 1px solid #333;
+      border-radius: 6px;
+      color: var(--text);
+      padding: 8px;
+      font-family: inherit;
+      resize: vertical;
+      outline: none;
+    }
+    .status {
+      font-size: 11px;
+      color: var(--hint);
+      text-align: right;
+      margin-top: 4px;
     }
   </style>
 </head>
 <body>
   <div class="header">
     <h2 style="margin: 0;">Family Notepad</h2>
-    <span class="badge" id="user-badge">Loading...</span>
+    <span class="badge" id="user-badge">Connecting...</span>
   </div>
 
   <div class="tabs">
-    <button class="tab-btn active" id="btn-shared" onclick="switchTab('shared')">Shared</button>
-    <button class="tab-btn" id="btn-personal" onclick="switchTab('personal')">Personal</button>
+    <button class="tab-btn active" id="tab-shared" onclick="setTab(true)">Shared</button>
+    <button class="tab-btn" id="tab-personal" onclick="setTab(false)">Personal</button>
   </div>
 
-  <div id="content">
-    <div class="card">
-      <h3>🐾 Vet Checkup</h3>
-      <p>Спросить про витамины и график прививок.</p>
-    </div>
-    <div class="card">
-      <h3>🛒 Shopping List</h3>
-      <p>Корм для собаки, фильтр для воды.</p>
-    </div>
+  <div class="create-box">
+    <input type="text" id="new-topic" placeholder="New topic (e.g. Vet, Shopping)...">
+    <button class="action-btn" onclick="createTopic()">Add</button>
   </div>
+
+  <div id="notes-container"></div>
 
   <script>
+    const API_BASE = "https://profit-effectiveness-diet-effective.trycloudflare.com";
+
     const tg = window.Telegram.WebApp;
     tg.ready();
     tg.expand();
 
-    const user = tg.initDataUnsafe?.user;
-    const badge = document.getElementById('user-badge');
-    if (user) {
-      badge.textContent = user.first_name || 'Authorized';
-    } else {
-      badge.textContent = 'Guest Mode';
+    const currentUserId = tg.initDataUnsafe?.user?.id || 547418372;
+    const userName = tg.initDataUnsafe?.user?.first_name || "Authorized";
+    document.getElementById("user-badge").textContent = userName;
+
+    let isSharedTab = true;
+    let allNotes = [];
+    let saveTimeouts = {};
+
+    function setTab(shared) {
+      isSharedTab = shared;
+      document.getElementById("tab-shared").classList.toggle("active", shared);
+      document.getElementById("tab-personal").classList.toggle("active", !shared);
+      renderNotes();
     }
 
-    function switchTab(type) {
-      document.getElementById('btn-shared').classList.toggle('active', type === 'shared');
-      document.getElementById('btn-personal').classList.toggle('active', type === 'personal');
-      
-      const content = document.getElementById('content');
-      if (type === 'personal') {
-        content.innerHTML = `
-          <div class="card">
-            <h3>🔒 Personal Notes</h3>
-            <p>Личные заметки и идеи (видны только вам).</p>
-          </div>
-        `;
-      } else {
-        content.innerHTML = `
-          <div class="card">
-            <h3>🐾 Vet Checkup</h3>
-            <p>Спросить про витамины и график прививок.</p>
-          </div>
-          <div class="card">
-            <h3>🛒 Shopping List</h3>
-            <p>Корм для собаки, фильтр для воды.</p>
-          </div>
-        `;
+    async function fetchNotes() {
+      try {
+        const res = await fetch(`${API_BASE}/api/notes`, {
+          headers: { "x-user-id": currentUserId }
+        });
+        if (!res.ok) throw new Error("API error");
+        allNotes = await res.json();
+        renderNotes();
+      } catch (err) {
+        console.error(err);
       }
     }
+
+    function renderNotes() {
+      const container = document.getElementById("notes-container");
+      container.innerHTML = "";
+
+      const filtered = allNotes.filter(n => n.is_shared === isSharedTab);
+
+      if (filtered.length === 0) {
+        container.innerHTML = `<div style="text-align:center; color: var(--hint); margin-top: 30px;">No notes yet. Create one above!</div>`;
+        return;
+      }
+
+      filtered.forEach(note => {
+        const card = document.createElement("div");
+        card.className = "card";
+        card.innerHTML = `
+          <div class="card-header">
+            <span class="card-title">${escapeHtml(note.title)}</span>
+            <button class="del-btn" onclick="deleteTopic(${note.id})">Delete</button>
+          </div>
+          <textarea id="text-${note.id}" placeholder="Type notes here...">${escapeHtml(note.content || "")}</textarea>
+          <div class="status" id="status-${note.id}">Saved</div>
+        `;
+
+        const textarea = card.querySelector(`#text-${note.id}`);
+        textarea.addEventListener("input", (e) => onContentInput(note.id, e.target.value));
+
+        container.appendChild(card);
+      });
+    }
+
+    async function createTopic() {
+      const input = document.getElementById("new-topic");
+      const title = input.value.trim();
+      if (!title) return;
+
+      try {
+        const res = await fetch(`${API_BASE}/api/notes`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-user-id": currentUserId
+          },
+          body: JSON.stringify({
+            title: title,
+            is_shared: isSharedTab,
+            content: ""
+          })
+        });
+
+        if (res.ok) {
+          input.value = "";
+          await fetchNotes();
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    function onContentInput(id, val) {
+      const status = document.getElementById(`status-${id}`);
+      if (status) status.textContent = "Saving...";
+
+      clearTimeout(saveTimeouts[id]);
+      saveTimeouts[id] = setTimeout(async () => {
+        try {
+          const res = await fetch(`${API_BASE}/api/notes/${id}`, {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+              "x-user-id": currentUserId
+            },
+            body: JSON.stringify({ content: val })
+          });
+          if (res.ok && status) status.textContent = "Saved";
+        } catch (err) {
+          if (status) status.textContent = "Save error";
+        }
+      }, 700);
+    }
+
+    async function deleteTopic(id) {
+      if (!confirm("Are you sure you want to delete this topic?")) return;
+
+      try {
+        const res = await fetch(`${API_BASE}/api/notes/${id}`, {
+          method: "DELETE",
+          headers: { "x-user-id": currentUserId }
+        });
+        if (res.ok) {
+          await fetchNotes();
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement("div");
+      div.innerText = text;
+      return div.innerHTML;
+    }
+
+    fetchNotes();
   </script>
 </body>
 </html>
