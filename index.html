@@ -61,11 +61,12 @@
     .grid-label { font-size: 12px; font-weight: 600; text-align: center; }
 
     .bg-blue { background: linear-gradient(135deg, #2563EB, #60A5FA); }
+    .bg-orange { background: linear-gradient(135deg, #EA580C, #FBBF24); }
     .bg-green { background: linear-gradient(135deg, #16A34A, #4ADE80); }
     .bg-purple { background: linear-gradient(135deg, #7C3AED, #A78BFA); }
-    .bg-orange { background: linear-gradient(135deg, #EA580C, #FBBF24); }
     .bg-pink { background: linear-gradient(135deg, #BE123C, #F43F5E); }
     .bg-lightblue { background: linear-gradient(135deg, #0284C7, #38BDF8); }
+    .bg-gray { background: linear-gradient(135deg, #4B5563, #9CA3AF); }
 
     .nav-header {
       display: flex;
@@ -159,11 +160,15 @@
         <div class="grid-icon">📋</div>
         <div class="grid-label">Tasks</div>
       </div>
+      <div class="grid-item bg-lightblue" onclick="openScreen('screen-dev', 'Finance')">
+        <div class="grid-icon">💰</div>
+        <div class="grid-label">Finance</div>
+      </div>
       <div class="grid-item bg-pink" onclick="openScreen('screen-dev', 'Smart Home')">
         <div class="grid-icon">🏠</div>
         <div class="grid-label">Smart Home</div>
       </div>
-      <div class="grid-item bg-lightblue" onclick="openScreen('screen-dev', 'Settings')">
+      <div class="grid-item bg-gray" onclick="openScreen('screen-dev', 'Settings')">
         <div class="grid-icon">⚙️</div>
         <div class="grid-label">Settings</div>
       </div>
@@ -242,6 +247,7 @@
     let allData = [];
     let isNotesShared = true;
     let isWishShared = true;
+    let expandedNotes = {}; // Keeps track of which notes are open
 
     function openScreen(screenId, devTitle = "") {
       document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -283,15 +289,17 @@
       renderNotes();
     }
 
-    function toggleAccordion(element) {
-      const body = element.nextElementSibling;
-      const chevron = element.querySelector('.chevron');
-      if (body.style.display === 'block') {
-        body.style.display = 'none';
-        chevron.style.transform = 'rotate(0deg)';
-      } else {
+    function toggleAccordion(noteId) {
+      expandedNotes[noteId] = !expandedNotes[noteId];
+      const body = document.getElementById(`note-body-${noteId}`);
+      const chevron = document.getElementById(`chevron-${noteId}`);
+      
+      if (expandedNotes[noteId]) {
         body.style.display = 'block';
         chevron.style.transform = 'rotate(180deg)';
+      } else {
+        body.style.display = 'none';
+        chevron.style.transform = 'rotate(0deg)';
       }
     }
 
@@ -314,6 +322,10 @@
         const card = document.createElement("div");
         card.className = "card";
         const items = parseJSON(note.content);
+        
+        const isExpanded = expandedNotes[note.id] === true;
+        const displayStyle = isExpanded ? 'block' : 'none';
+        const chevronTransform = isExpanded ? 'rotate(180deg)' : 'rotate(0deg)';
 
         let itemsHtml = items.map((item, idx) => `
           <div class="list-item ${item.done ? 'done' : ''}" onclick="toggleNoteItem(${note.id}, ${idx})">
@@ -323,14 +335,14 @@
         `).join('');
 
         card.innerHTML = `
-          <div class="card-header" onclick="toggleAccordion(this)">
+          <div class="card-header" onclick="toggleAccordion(${note.id})">
             <div class="card-title-group">
-              <span class="chevron">▼</span>
+              <span class="chevron" id="chevron-${note.id}" style="transform: ${chevronTransform};">▼</span>
               <span class="card-title">${escapeHtml(note.title)}</span>
             </div>
             <button class="del-btn" onclick="deleteItem(event, ${note.id})">Delete</button>
           </div>
-          <div class="card-body">
+          <div class="card-body" id="note-body-${note.id}" style="display: ${displayStyle};">
             <div class="items-container">${itemsHtml}</div>
             <div class="add-item-box">
               <input type="text" id="add-input-${note.id}" placeholder="Add sub-item..." onkeypress="handleEnter(event, ${note.id})">
@@ -405,7 +417,7 @@
         let details = { price: "", url: "" };
         try { details = JSON.parse(wish.content); } catch(e) {}
         
-        let linkHtml = details.url ? `<button class="link-btn" onclick="openLink('${details.url}')">Open Link</button>` : '';
+        let linkHtml = details.url ? `<button class="link-btn" onclick="openLinkSafely(event, '${details.url}')">Open Link</button>` : '';
 
         card.innerHTML = `
           <div class="wish-info">
@@ -446,9 +458,17 @@
       } catch (err) {}
     }
 
-    function openLink(url) {
-      if (tg && tg.openLink) tg.openLink(url);
-      else window.open(url, '_blank');
+    function openLinkSafely(e, url) {
+      e.stopPropagation();
+      try {
+        if (tg && tg.openLink) {
+          tg.openLink(url);
+        } else {
+          window.open(url, '_blank');
+        }
+      } catch (err) {
+        window.open(url, '_blank');
+      }
     }
 
     async function saveContent(noteId, itemsObj) {
