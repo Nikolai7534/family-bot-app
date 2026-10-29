@@ -214,7 +214,12 @@
 
     async function fetchNotes() {
       try {
-        const res = await fetch(`${API_BASE}/api/notes`, { headers: { "x-user-id": currentUserId } });
+        const res = await fetch(`${API_BASE}/api/notes`, { 
+          headers: { 
+            "x-user-id": currentUserId,
+            "ngrok-skip-browser-warning": "true"
+          } 
+        });
         if (!res.ok) throw new Error("Server error");
         allNotes = await res.json();
         renderNotes();
@@ -271,7 +276,11 @@
       try {
         await fetch(`${API_BASE}/api/notes/${noteId}`, {
           method: "PUT",
-          headers: { "Content-Type": "application/json", "x-user-id": currentUserId },
+          headers: { 
+            "Content-Type": "application/json", 
+            "x-user-id": currentUserId,
+            "ngrok-skip-browser-warning": "true"
+          },
           body: JSON.stringify({ content: contentStr })
         });
       } catch(e) {
@@ -314,7 +323,11 @@
       try {
         const res = await fetch(`${API_BASE}/api/notes`, {
           method: "POST",
-          headers: { "Content-Type": "application/json", "x-user-id": currentUserId },
+          headers: { 
+            "Content-Type": "application/json", 
+            "x-user-id": currentUserId,
+            "ngrok-skip-browser-warning": "true"
+          },
           body: JSON.stringify({ title: title, is_shared: isSharedTab, content: "[]" })
         });
         if (res.ok) { 
@@ -330,7 +343,11 @@
       if (!confirm("Delete this topic?")) return;
       try {
         const res = await fetch(`${API_BASE}/api/notes/${id}`, {
-          method: "DELETE", headers: { "x-user-id": currentUserId }
+          method: "DELETE", 
+          headers: { 
+            "x-user-id": currentUserId,
+            "ngrok-skip-browser-warning": "true" 
+          }
         });
         if (res.ok) await fetchNotes();
       } catch (err) {}
