@@ -4,134 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>Family App</title>
+  <link rel="stylesheet" href="style.css">
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
-    
-    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-    
-    body {
-      font-family: 'Inter', sans-serif;
-      margin: 0; 
-      padding: 0;
-      background: #0B1120;
-      color: #ffffff;
-      min-height: 100vh;
-      overflow-x: hidden;
-    }
-
-    .screen { display: none; padding: 16px; animation: fadeIn 0.3s ease; }
-    .screen.active { display: block; }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-
-    .welcome-card {
-      background: linear-gradient(135deg, #1E3A8A, #3B82F6);
-      border-radius: 16px;
-      padding: 20px;
-      margin-bottom: 24px;
-      box-shadow: 0 10px 25px rgba(59, 130, 246, 0.2);
-      position: relative;
-      overflow: hidden;
-    }
-    .welcome-card h2 { margin: 0 0 4px 0; font-size: 22px; font-weight: 800; z-index: 2; position: relative; }
-    .welcome-card p { margin: 0; font-size: 13px; color: rgba(255,255,255,0.8); z-index: 2; position: relative; }
-    .welcome-card .rocket { position: absolute; right: -10px; bottom: -10px; font-size: 80px; opacity: 0.8; z-index: 1; }
-
-    .grid-menu {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 12px;
-      margin-bottom: 24px;
-    }
-    
-    .grid-item {
-      border-radius: 16px;
-      padding: 18px 8px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-      transition: transform 0.1s;
-      aspect-ratio: 1 / 1;
-    }
-    .grid-item:active { transform: scale(0.95); }
-    .grid-icon { font-size: 28px; margin-bottom: 8px; }
-    .grid-label { font-size: 12px; font-weight: 600; text-align: center; }
-
-    .bg-blue { background: linear-gradient(135deg, #2563EB, #60A5FA); }
-    .bg-orange { background: linear-gradient(135deg, #EA580C, #FBBF24); }
-    .bg-green { background: linear-gradient(135deg, #16A34A, #4ADE80); }
-    .bg-purple { background: linear-gradient(135deg, #7C3AED, #A78BFA); }
-    .bg-pink { background: linear-gradient(135deg, #BE123C, #F43F5E); }
-    .bg-lightblue { background: linear-gradient(135deg, #0284C7, #38BDF8); }
-    .bg-gray { background: linear-gradient(135deg, #4B5563, #9CA3AF); }
-
-    .nav-header {
-      display: flex;
-      align-items: center;
-      margin-bottom: 20px;
-      padding-bottom: 12px;
-      border-bottom: 1px solid rgba(255,255,255,0.1);
-    }
-    .back-btn {
-      background: rgba(255,255,255,0.1);
-      border: none;
-      color: white;
-      width: 36px; height: 36px;
-      border-radius: 10px;
-      display: flex; justify-content: center; align-items: center;
-      margin-right: 12px;
-      font-size: 18px; cursor: pointer;
-    }
-    .nav-header h2 { margin: 0; font-size: 20px; font-weight: 700; }
-
-    /* UI Common */
-    .tabs { display: flex; gap: 8px; margin-bottom: 16px; background: rgba(0,0,0,0.3); padding: 4px; border-radius: 10px; }
-    .tab-btn { flex: 1; padding: 10px; border: none; border-radius: 8px; background: transparent; color: rgba(255,255,255,0.5); font-weight: 600; cursor: pointer; transition: 0.2s;}
-    .tab-btn.active { background: #2563EB; color: #fff; }
-    .del-btn { background: rgba(239, 68, 68, 0.2); border: none; color: #FCA5A5; font-size: 12px; font-weight: bold; border-radius: 6px; padding: 6px 10px; cursor: pointer; }
-    
-    /* Notes Module */
-    .create-box { display: flex; gap: 8px; margin-bottom: 16px; }
-    .create-box input { flex: 1; padding: 12px 14px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05); color: #fff; outline: none; }
-    .create-box button { padding: 0 18px; border: none; border-radius: 10px; background: #2563EB; color: white; font-size: 20px; font-weight: bold; cursor: pointer; }
-    
-    .card { background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255,255,255,0.05); border-radius: 14px; margin-bottom: 12px; overflow: hidden; }
-    .card-header { display: flex; justify-content: space-between; align-items: center; padding: 16px; cursor: pointer; transition: background 0.2s; }
-    .card-header:active { background: rgba(255, 255, 255, 0.1); }
-    .card-title-group { display: flex; align-items: center; gap: 10px; }
-    .chevron { font-size: 12px; color: #64748B; transition: transform 0.3s; }
-    .card-title { font-weight: 700; font-size: 16px; color: #fff; }
-    .card-body { padding: 0 16px 16px 16px; display: none; border-top: 1px solid rgba(255,255,255,0.05); margin-top: 4px; padding-top: 12px; }
-
-    .list-item { display: flex; align-items: center; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05); cursor: pointer; }
-    .list-item:last-child { border-bottom: none; }
-    .checkbox { width: 22px; height: 22px; border-radius: 6px; border: 2px solid rgba(255,255,255,0.3); margin-right: 12px; display: flex; justify-content: center; align-items: center; position: relative; }
-    .list-item.done .checkbox { background: #2563EB; border-color: #2563EB; }
-    .list-item.done .checkbox::after { content: 'V'; color: white; font-size: 12px; position: absolute; font-weight: bold; }
-    .list-item.done .item-text { text-decoration: line-through; color: rgba(255,255,255,0.3); }
-    .item-text { flex: 1; font-size: 15px; }
-    
-    .add-item-box { display: flex; margin-top: 12px; gap: 8px; }
-    .add-item-box input { flex: 1; padding: 10px 12px; border-radius: 8px; border: none; background: rgba(0,0,0,0.2); color: #fff; outline: none; }
-    .add-btn { background: rgba(255,255,255,0.1); color: #fff; border: none; border-radius: 8px; padding: 0 16px; font-weight: bold; cursor: pointer; }
-
-    /* Wishlist Module */
-    .wish-form { background: rgba(255,255,255,0.05); border-radius: 14px; padding: 16px; margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.05); }
-    .wish-input { width: 100%; padding: 12px 14px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.2); color: #fff; outline: none; margin-bottom: 10px; }
-    .wish-row { display: flex; gap: 10px; margin-bottom: 10px; }
-    .wish-submit { width: 100%; padding: 12px; border-radius: 10px; background: #EA580C; color: white; font-weight: bold; border: none; cursor: pointer; font-size: 15px; }
-    
-    .wish-card { background: rgba(255,255,255,0.05); border-radius: 14px; padding: 16px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; border: 1px solid rgba(255,255,255,0.05); }
-    .wish-info { flex: 1; padding-right: 12px; overflow: hidden; }
-    .wish-name { font-weight: 700; font-size: 16px; margin-bottom: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .wish-price { color: #FBBF24; font-weight: 800; font-size: 14px; }
-    .wish-actions { display: flex; flex-direction: column; gap: 8px; min-width: 80px; }
-    .link-btn { background: #2563EB; color: #fff; text-align: center; border-radius: 6px; padding: 6px; font-size: 12px; font-weight: bold; text-decoration: none; display: block; border: none; cursor: pointer; }
-
-  </style>
 </head>
 <body>
 
@@ -142,7 +16,6 @@
       <p id="user-greeting">Loading...</p>
       <div class="rocket">🚀</div>
     </div>
-
     <div class="grid-menu">
       <div class="grid-item bg-blue" onclick="openScreen('screen-notes')">
         <div class="grid-icon">📝</div>
@@ -194,17 +67,14 @@
       <button class="back-btn" onclick="openScreen('screen-dashboard')">←</button>
       <h2>Notes</h2>
     </div>
-
     <div class="tabs">
       <button class="tab-btn active" id="tab-notes-shared" onclick="setNotesTab(true)">Shared</button>
       <button class="tab-btn" id="tab-notes-personal" onclick="setNotesTab(false)">Personal</button>
     </div>
-
     <div class="create-box">
       <input type="text" id="new-topic" placeholder="New topic name...">
       <button onclick="createTopic()">+</button>
     </div>
-
     <div id="notes-container"></div>
   </div>
 
@@ -214,12 +84,10 @@
       <button class="back-btn" onclick="openScreen('screen-dashboard')">←</button>
       <h2>Wishlist</h2>
     </div>
-
     <div class="tabs">
       <button class="tab-btn active" id="tab-wish-shared" onclick="setWishTab(true)">Shared</button>
       <button class="tab-btn" id="tab-wish-personal" onclick="setWishTab(false)">Personal</button>
     </div>
-
     <div class="wish-form">
       <input type="text" id="wish-name" class="wish-input" placeholder="Item name (e.g. Dyson V15)">
       <div class="wish-row">
@@ -228,267 +96,12 @@
       </div>
       <button class="wish-submit" onclick="createWish()">Add to Wishlist</button>
     </div>
-
     <div id="wishlist-container"></div>
   </div>
 
-  <script>
-    const API_BASE = "https://uplifting-fled-squiggly.ngrok-free.dev";
-    const WISH_PREFIX = "[WISH]";
-
-    const tg = window.Telegram.WebApp;
-    tg.ready();
-    tg.expand();
-
-    const currentUserId = tg.initDataUnsafe?.user?.id || 547418372;
-    const userName = tg.initDataUnsafe?.user?.first_name || "User";
-    document.getElementById("user-greeting").textContent = `Hello, ${userName}!`;
-
-    let allData = [];
-    let isNotesShared = true;
-    let isWishShared = true;
-    let expandedNotes = {}; // Keeps track of which notes are open
-
-    function openScreen(screenId, devTitle = "") {
-      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-      document.getElementById(screenId).classList.add('active');
-      if (screenId === 'screen-dev') document.getElementById('dev-title').textContent = devTitle;
-      if (screenId === 'screen-notes' || screenId === 'screen-wishlist') fetchAllData();
-    }
-
-    async function fetchAllData() {
-      try {
-        const res = await fetch(`${API_BASE}/api/notes`, { 
-          headers: { "x-user-id": currentUserId, "ngrok-skip-browser-warning": "true" } 
-        });
-        if (!res.ok) throw new Error();
-        allData = await res.json();
-        renderNotes();
-        renderWishes();
-      } catch (err) { 
-        alert("Connection error! Make sure the server and tunnel are running.");
-      }
-    }
-
-    async function deleteItem(e, id) {
-      e.stopPropagation();
-      if (!confirm("Delete this?")) return;
-      try {
-        await fetch(`${API_BASE}/api/notes/${id}`, {
-          method: "DELETE", headers: { "x-user-id": currentUserId, "ngrok-skip-browser-warning": "true" }
-        });
-        fetchAllData();
-      } catch (err) {}
-    }
-
-    /* --- NOTES LOGIC --- */
-    function setNotesTab(shared) {
-      isNotesShared = shared;
-      document.getElementById("tab-notes-shared").classList.toggle("active", shared);
-      document.getElementById("tab-notes-personal").classList.toggle("active", !shared);
-      renderNotes();
-    }
-
-    function toggleAccordion(noteId) {
-      expandedNotes[noteId] = !expandedNotes[noteId];
-      const body = document.getElementById(`note-body-${noteId}`);
-      const chevron = document.getElementById(`chevron-${noteId}`);
-      
-      if (expandedNotes[noteId]) {
-        body.style.display = 'block';
-        chevron.style.transform = 'rotate(180deg)';
-      } else {
-        body.style.display = 'none';
-        chevron.style.transform = 'rotate(0deg)';
-      }
-    }
-
-    function parseJSON(raw) {
-      try { return JSON.parse(raw) || []; } catch(e) { return []; }
-    }
-
-    function renderNotes() {
-      const container = document.getElementById("notes-container");
-      container.innerHTML = "";
-      
-      const notes = allData.filter(n => n.is_shared === isNotesShared && !n.title.startsWith(WISH_PREFIX));
-      
-      if (notes.length === 0) {
-        container.innerHTML = `<div style="text-align:center; padding: 40px; color: #64748B;">List is empty</div>`;
-        return;
-      }
-
-      notes.forEach(note => {
-        const card = document.createElement("div");
-        card.className = "card";
-        const items = parseJSON(note.content);
-        
-        const isExpanded = expandedNotes[note.id] === true;
-        const displayStyle = isExpanded ? 'block' : 'none';
-        const chevronTransform = isExpanded ? 'rotate(180deg)' : 'rotate(0deg)';
-
-        let itemsHtml = items.map((item, idx) => `
-          <div class="list-item ${item.done ? 'done' : ''}" onclick="toggleNoteItem(${note.id}, ${idx})">
-            <div class="checkbox"></div>
-            <div class="item-text">${escapeHtml(item.text)}</div>
-          </div>
-        `).join('');
-
-        card.innerHTML = `
-          <div class="card-header" onclick="toggleAccordion(${note.id})">
-            <div class="card-title-group">
-              <span class="chevron" id="chevron-${note.id}" style="transform: ${chevronTransform};">▼</span>
-              <span class="card-title">${escapeHtml(note.title)}</span>
-            </div>
-            <button class="del-btn" onclick="deleteItem(event, ${note.id})">Delete</button>
-          </div>
-          <div class="card-body" id="note-body-${note.id}" style="display: ${displayStyle};">
-            <div class="items-container">${itemsHtml}</div>
-            <div class="add-item-box">
-              <input type="text" id="add-input-${note.id}" placeholder="Add sub-item..." onkeypress="handleEnter(event, ${note.id})">
-              <button class="add-btn" onclick="addNoteItem(${note.id})">+</button>
-            </div>
-          </div>
-        `;
-        container.appendChild(card);
-      });
-    }
-
-    async function createTopic() {
-      const input = document.getElementById("new-topic");
-      const title = input.value.trim();
-      if (!title) return;
-      try {
-        await fetch(`${API_BASE}/api/notes`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "x-user-id": currentUserId, "ngrok-skip-browser-warning": "true" },
-          body: JSON.stringify({ title: title, is_shared: isNotesShared, content: "[]" })
-        });
-        input.value = ""; 
-        fetchAllData(); 
-      } catch (err) {}
-    }
-
-    async function toggleNoteItem(noteId, itemIdx) {
-      const note = allData.find(n => n.id === noteId);
-      const items = parseJSON(note.content);
-      items[itemIdx].done = !items[itemIdx].done;
-      await saveContent(noteId, items);
-    }
-
-    async function addNoteItem(noteId) {
-      const input = document.getElementById(`add-input-${noteId}`);
-      const text = input.value.trim();
-      if (!text) return;
-      const note = allData.find(n => n.id === noteId);
-      const items = parseJSON(note.content);
-      items.push({ text: text, done: false });
-      input.value = '';
-      await saveContent(noteId, items);
-    }
-
-    function handleEnter(e, noteId) {
-      if (e.key === 'Enter') addNoteItem(noteId);
-    }
-
-    /* --- WISHLIST LOGIC --- */
-    function setWishTab(shared) {
-      isWishShared = shared;
-      document.getElementById("tab-wish-shared").classList.toggle("active", shared);
-      document.getElementById("tab-wish-personal").classList.toggle("active", !shared);
-      renderWishes();
-    }
-
-    function renderWishes() {
-      const container = document.getElementById("wishlist-container");
-      container.innerHTML = "";
-      
-      const wishes = allData.filter(n => n.is_shared === isWishShared && n.title.startsWith(WISH_PREFIX));
-      
-      if (wishes.length === 0) {
-        container.innerHTML = `<div style="text-align:center; padding: 40px; color: #64748B;">No wishes yet</div>`;
-        return;
-      }
-
-      wishes.forEach(wish => {
-        const card = document.createElement("div");
-        card.className = "wish-card";
-        const realTitle = wish.title.replace(WISH_PREFIX, "").trim();
-        let details = { price: "", url: "" };
-        try { details = JSON.parse(wish.content); } catch(e) {}
-        
-        let linkHtml = details.url ? `<button class="link-btn" onclick="openLinkSafely(event, '${details.url}')">Open Link</button>` : '';
-
-        card.innerHTML = `
-          <div class="wish-info">
-            <div class="wish-name">${escapeHtml(realTitle)}</div>
-            <div class="wish-price">${escapeHtml(details.price)}</div>
-          </div>
-          <div class="wish-actions">
-            ${linkHtml}
-            <button class="del-btn" onclick="deleteItem(event, ${wish.id})">Delete</button>
-          </div>
-        `;
-        container.appendChild(card);
-      });
-    }
-
-    async function createWish() {
-      const nameInput = document.getElementById("wish-name");
-      const priceInput = document.getElementById("wish-price");
-      const urlInput = document.getElementById("wish-url");
-      
-      const name = nameInput.value.trim();
-      if (!name) return;
-      
-      let url = urlInput.value.trim();
-      if (url && !url.startsWith('http')) url = 'https://' + url;
-
-      const title = `${WISH_PREFIX} ${name}`;
-      const content = JSON.stringify({ price: priceInput.value.trim(), url: url });
-
-      try {
-        await fetch(`${API_BASE}/api/notes`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "x-user-id": currentUserId, "ngrok-skip-browser-warning": "true" },
-          body: JSON.stringify({ title: title, is_shared: isWishShared, content: content })
-        });
-        nameInput.value = ""; priceInput.value = ""; urlInput.value = "";
-        fetchAllData(); 
-      } catch (err) {}
-    }
-
-    function openLinkSafely(e, url) {
-      e.stopPropagation();
-      try {
-        if (tg && tg.openLink) {
-          tg.openLink(url);
-        } else {
-          window.open(url, '_blank');
-        }
-      } catch (err) {
-        window.open(url, '_blank');
-      }
-    }
-
-    async function saveContent(noteId, itemsObj) {
-      const note = allData.find(n => n.id === noteId);
-      note.content = JSON.stringify(itemsObj);
-      renderNotes();
-      try {
-        await fetch(`${API_BASE}/api/notes/${noteId}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json", "x-user-id": currentUserId, "ngrok-skip-browser-warning": "true" },
-          body: JSON.stringify({ content: note.content })
-        });
-      } catch(e) {}
-    }
-
-    function escapeHtml(text) {
-      const div = document.createElement("div");
-      div.innerText = text;
-      return div.innerHTML;
-    }
-  </script>
+  <!-- LOAD SCRIPTS IN ORDER -->
+  <script src="main.js"></script>
+  <script src="notes.js"></script>
+  <script src="wishlist.js"></script>
 </body>
 </html>
