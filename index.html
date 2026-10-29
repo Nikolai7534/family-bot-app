@@ -3,245 +3,224 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>Заметки</title>
+  <title>Family App</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
     
-    * { box-sizing: border-box; }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
     
     body {
-      font-family: 'Nunito', sans-serif;
+      font-family: 'Inter', sans-serif;
       margin: 0; 
-      padding: 16px;
-      /* Сочный темный градиент */
-      background: linear-gradient(135deg, #0f2027, #203a43, #2c5364); 
+      padding: 0;
+      background: #0B1120; /* Темно-синий фон как на фото */
       color: #ffffff;
       min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Система экранов (Скрываем неактивные) */
+    .screen { display: none; padding: 16px; animation: fadeIn 0.3s ease; }
+    .screen.active { display: block; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* =========================================
+       ДИЗАЙН ГЛАВНОГО ЭКРАНА (DASHBOARD)
+       ========================================= */
+    .welcome-card {
+      background: linear-gradient(135deg, #1E3A8A, #3B82F6);
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 24px;
+      box-shadow: 0 10px 25px rgba(59, 130, 246, 0.2);
+      position: relative;
+      overflow: hidden;
+    }
+    .welcome-card h2 { margin: 0 0 4px 0; font-size: 22px; font-weight: 800; z-index: 2; position: relative; }
+    .welcome-card p { margin: 0; font-size: 13px; color: rgba(255,255,255,0.8); z-index: 2; position: relative; }
+    .welcome-card .rocket { position: absolute; right: -10px; bottom: -10px; font-size: 80px; opacity: 0.8; z-index: 1; }
+
+    /* Сетка иконок 3x2 */
+    .grid-menu {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-bottom: 24px;
     }
     
-    .header { 
-      display: flex; 
-      justify-content: space-between; 
-      align-items: center; 
-      margin-bottom: 24px; 
-    }
-    
-    h2 { 
-      margin: 0; 
-      font-weight: 800; 
-      font-size: 26px; 
-      letter-spacing: 0.5px; 
-      text-shadow: 0 2px 4px rgba(0,0,0,0.3); 
-    }
-    
-    .badge {
-      background: linear-gradient(135deg, #00c6ff, #0072ff);
-      color: white; 
-      padding: 6px 14px; 
-      border-radius: 20px; 
-      font-size: 13px; 
-      font-weight: 800;
-      box-shadow: 0 4px 15px rgba(0, 114, 255, 0.4);
-    }
-    
-    /* Переключатель вкладок */
-    .tabs { 
-      display: flex; 
-      gap: 8px; 
-      margin-bottom: 24px; 
-      background: rgba(0,0,0,0.2); 
-      padding: 6px; 
-      border-radius: 14px; 
-    }
-    
-    .tab-btn {
-      flex: 1; 
-      padding: 12px; 
-      border: none; 
-      border-radius: 10px;
-      background: transparent; 
-      color: rgba(255,255,255,0.5); 
-      font-weight: 800; 
-      font-size: 15px;
-      cursor: pointer; 
-      transition: 0.3s;
-    }
-    
-    .tab-btn.active { 
-      background: rgba(255,255,255,0.15); 
-      color: #fff; 
-      box-shadow: 0 4px 10px rgba(0,0,0,0.2); 
-    }
-    
-    /* Поле создания темы */
-    .create-box { 
-      display: flex; 
-      gap: 12px; 
-      margin-bottom: 24px; 
-    }
-    
-    .create-box input {
-      flex: 1; 
-      padding: 14px 16px; 
-      border-radius: 14px; 
-      border: 1px solid rgba(255,255,255,0.1);
-      background: rgba(255,255,255,0.05); 
-      color: #fff; 
-      outline: none; 
-      font-size: 15px; 
-      transition: 0.3s;
-    }
-    
-    .create-box input:focus { 
-      border-color: #00c6ff; 
-      background: rgba(255,255,255,0.1); 
-    }
-    
-    .create-box button {
-      padding: 0 22px; 
-      border: none; 
-      border-radius: 14px; 
-      font-size: 22px;
-      background: linear-gradient(135deg, #11998e, #38ef7d); 
-      color: white; 
-      font-weight: bold; 
+    .grid-item {
+      border-radius: 16px;
+      padding: 18px 8px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
       cursor: pointer;
-      box-shadow: 0 4px 15px rgba(56, 239, 125, 0.4); 
-      transition: 0.2s;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      transition: transform 0.1s;
+      aspect-ratio: 1 / 1;
     }
-    
-    .create-box button:active { transform: scale(0.95); }
-    
-    /* Стеклянные карточки */
-    .card {
-      background: rgba(255, 255, 255, 0.05); 
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
-      border: 1px solid rgba(255,255,255,0.1); 
-      border-radius: 18px; 
-      padding: 18px; 
-      margin-bottom: 16px;
-      box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+    .grid-item:active { transform: scale(0.95); }
+    .grid-icon { font-size: 28px; margin-bottom: 8px; }
+    .grid-label { font-size: 12px; font-weight: 600; text-align: center; }
+
+    /* Цвета кнопок как на фото */
+    .bg-blue { background: linear-gradient(135deg, #2563EB, #60A5FA); }
+    .bg-green { background: linear-gradient(135deg, #16A34A, #4ADE80); }
+    .bg-purple { background: linear-gradient(135deg, #7C3AED, #A78BFA); }
+    .bg-orange { background: linear-gradient(135deg, #EA580C, #FBBF24); }
+    .bg-pink { background: linear-gradient(135deg, #BE123C, #F43F5E); }
+    .bg-lightblue { background: linear-gradient(135deg, #0284C7, #38BDF8); }
+
+    /* =========================================
+       ВНУТРЕННИЕ ЭКРАНЫ (ЗАМЕТКИ И ДР.)
+       ========================================= */
+    .nav-header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 20px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
     }
-    
-    .card-header { 
-      display: flex; 
-      justify-content: space-between; 
-      align-items: center; 
-      margin-bottom: 16px; 
-      border-bottom: 1px solid rgba(255,255,255,0.1); 
-      padding-bottom: 12px; 
+    .back-btn {
+      background: rgba(255,255,255,0.1);
+      border: none;
+      color: white;
+      width: 36px; height: 36px;
+      border-radius: 10px;
+      display: flex; justify-content: center; align-items: center;
+      margin-right: 12px;
+      font-size: 18px; cursor: pointer;
     }
-    
-    .card-title { font-weight: 800; font-size: 18px; color: #e0f2fe; }
-    
-    .del-btn { 
-      background: rgba(255, 75, 75, 0.15); 
-      border: 1px solid rgba(255, 75, 75, 0.3); 
-      color: #ff4b4b; 
-      font-size: 12px; 
-      font-weight: bold; 
-      border-radius: 8px; 
-      padding: 6px 12px; 
-      cursor: pointer; 
-      transition: 0.2s; 
-    }
-    
-    /* Чеклист */
-    .list-item { 
-      display: flex; 
-      align-items: center; 
-      padding: 12px 0; 
-      border-bottom: 1px solid rgba(255,255,255,0.03); 
-      cursor: pointer; 
-      transition: 0.2s; 
-    }
-    
+    .nav-header h2 { margin: 0; font-size: 20px; font-weight: 700; }
+
+    /* Стили модуля заметок */
+    .tabs { display: flex; gap: 8px; margin-bottom: 16px; background: rgba(0,0,0,0.3); padding: 4px; border-radius: 10px; }
+    .tab-btn { flex: 1; padding: 10px; border: none; border-radius: 8px; background: transparent; color: rgba(255,255,255,0.5); font-weight: 600; cursor: pointer; }
+    .tab-btn.active { background: #2563EB; color: #fff; }
+    .create-box { display: flex; gap: 8px; margin-bottom: 16px; }
+    .create-box input { flex: 1; padding: 12px 14px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05); color: #fff; outline: none; }
+    .create-box button { padding: 0 18px; border: none; border-radius: 10px; background: #2563EB; color: white; font-size: 20px; font-weight: bold; cursor: pointer; }
+    .card { background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255,255,255,0.05); border-radius: 14px; padding: 16px; margin-bottom: 12px; }
+    .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .card-title { font-weight: 700; font-size: 16px; color: #fff; }
+    .del-btn { background: rgba(239, 68, 68, 0.2); border: none; color: #FCA5A5; font-size: 12px; font-weight: bold; border-radius: 6px; padding: 4px 8px; cursor: pointer; }
+    .list-item { display: flex; align-items: center; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05); cursor: pointer; }
     .list-item:last-child { border-bottom: none; }
-    
-    .checkbox { 
-      width: 24px; 
-      height: 24px; 
-      border-radius: 6px; 
-      border: 2px solid rgba(255,255,255,0.3); 
-      margin-right: 14px; 
-      display: flex; 
-      justify-content: center; 
-      align-items: center; 
-      position: relative; 
-      transition: 0.2s; 
-    }
-    
-    .list-item.done .checkbox { background: #00c6ff; border-color: #00c6ff; }
+    .checkbox { width: 22px; height: 22px; border-radius: 6px; border: 2px solid rgba(255,255,255,0.3); margin-right: 12px; display: flex; justify-content: center; align-items: center; position: relative; }
+    .list-item.done .checkbox { background: #2563EB; border-color: #2563EB; }
     .list-item.done .checkbox::after { content: '✔'; color: white; font-size: 14px; position: absolute; }
     .list-item.done .item-text { text-decoration: line-through; color: rgba(255,255,255,0.3); }
-    .item-text { flex: 1; font-size: 16px; transition: 0.2s; }
-    
-    /* Добавление пункта в чеклист */
-    .add-item-box { display: flex; margin-top: 16px; gap: 8px; }
-    .add-item-box input { 
-      flex: 1; 
-      padding: 12px 14px; 
-      border-radius: 12px; 
-      border: 1px solid transparent; 
-      background: rgba(0,0,0,0.2); 
-      color: #fff; 
-      outline: none; 
-      font-size: 14px; 
-    }
-    .add-item-box input:focus { border-color: rgba(255,255,255,0.2); }
-    
-    .add-btn { 
-      background: rgba(255,255,255,0.1); 
-      color: #fff; 
-      border: 1px solid rgba(255,255,255,0.1); 
-      border-radius: 12px; 
-      padding: 0 18px; 
-      font-weight: bold; 
-      font-size: 18px;
-      cursor: pointer; 
-      transition: 0.2s;
-    }
-    .add-btn:active { background: rgba(255,255,255,0.2); }
-    
-    .empty-state { 
-      text-align: center; 
-      color: rgba(255,255,255,0.5); 
-      padding: 40px 20px; 
-      font-size: 16px; 
-    }
+    .item-text { flex: 1; font-size: 15px; }
+    .add-item-box { display: flex; margin-top: 12px; gap: 8px; }
+    .add-item-box input { flex: 1; padding: 10px 12px; border-radius: 8px; border: none; background: rgba(0,0,0,0.2); color: #fff; outline: none; }
+    .add-btn { background: rgba(255,255,255,0.1); color: #fff; border: none; border-radius: 8px; padding: 0 16px; font-weight: bold; cursor: pointer; }
+
   </style>
 </head>
 <body>
-  <div class="header">
-    <h2>Заметки</h2>
-    <span class="badge" id="user-badge">Загрузка...</span>
+
+  <!-- 1. ГЛАВНОЕ МЕНЮ (DASHBOARD) -->
+  <div id="screen-dashboard" class="screen active">
+    
+    <div class="welcome-card">
+      <h2>Welcome Back! 🎉</h2>
+      <p id="user-greeting">Загрузка...</p>
+      <div class="rocket">🚀</div>
+    </div>
+
+    <div class="grid-menu">
+      <!-- Реальная функция -->
+      <div class="grid-item bg-blue" onclick="openScreen('screen-notes')">
+        <div class="grid-icon">📝</div>
+        <div class="grid-label">Заметки</div>
+      </div>
+      
+      <!-- Заглушки на будущее -->
+      <div class="grid-item bg-green" onclick="openScreen('screen-dev', 'Календарь')">
+        <div class="grid-icon">📅</div>
+        <div class="grid-label">Календарь</div>
+      </div>
+      <div class="grid-item bg-purple" onclick="openScreen('screen-dev', 'Задачи')">
+        <div class="grid-icon">📋</div>
+        <div class="grid-label">Задачи</div>
+      </div>
+      <div class="grid-item bg-orange" onclick="openScreen('screen-dev', 'Финансы')">
+        <div class="grid-icon">💰</div>
+        <div class="grid-label">Финансы</div>
+      </div>
+      <div class="grid-item bg-pink" onclick="openScreen('screen-dev', 'Умный дом')">
+        <div class="grid-icon">🏠</div>
+        <div class="grid-label">Умный дом</div>
+      </div>
+      <div class="grid-item bg-lightblue" onclick="openScreen('screen-dev', 'Настройки')">
+        <div class="grid-icon">⚙️</div>
+        <div class="grid-label">Настройки</div>
+      </div>
+    </div>
   </div>
 
-  <div class="tabs">
-    <button class="tab-btn active" id="tab-shared" onclick="setTab(true)">Общие</button>
-    <button class="tab-btn" id="tab-personal" onclick="setTab(false)">Личные</button>
+  <!-- 2. ЭКРАН В РАЗРАБОТКЕ -->
+  <div id="screen-dev" class="screen">
+    <div class="nav-header">
+      <button class="back-btn" onclick="openScreen('screen-dashboard')">←</button>
+      <h2 id="dev-title">В разработке</h2>
+    </div>
+    <div style="text-align:center; margin-top: 60px;">
+      <div style="font-size: 60px; margin-bottom: 20px;">🚧</div>
+      <h3>Раздел в разработке</h3>
+      <p style="color: rgba(255,255,255,0.5);">Эта функция появится в следующих версиях.</p>
+    </div>
   </div>
 
-  <div class="create-box">
-    <input type="text" id="new-topic" placeholder="Название новой темы...">
-    <button onclick="createTopic()">+</button>
-  </div>
+  <!-- 3. ЭКРАН ЗАМЕТОК (РАБОЧИЙ МОДУЛЬ) -->
+  <div id="screen-notes" class="screen">
+    <div class="nav-header">
+      <button class="back-btn" onclick="openScreen('screen-dashboard')">←</button>
+      <h2>Заметки</h2>
+    </div>
 
-  <div id="notes-container"></div>
+    <div class="tabs">
+      <button class="tab-btn active" id="tab-shared" onclick="setTab(true)">Общие</button>
+      <button class="tab-btn" id="tab-personal" onclick="setTab(false)">Личные</button>
+    </div>
+
+    <div class="create-box">
+      <input type="text" id="new-topic" placeholder="Название новой темы...">
+      <button onclick="createTopic()">+</button>
+    </div>
+
+    <div id="notes-container"></div>
+  </div>
 
   <script>
-    const API_BASE = "https://profit-effectiveness-diet-effective.trycloudflare.com";
+    // ВНИМАНИЕ: ВСТАВЬ СЮДА СВЕЖУЮ ССЫЛКУ ТУННЕЛЯ ПОСЛЕ ПЕРЕЗАГРУЗКИ CT105!
+    const API_BASE = "https://ТВОЯ-НОВАЯ-ССЫЛКА.trycloudflare.com";
 
     const tg = window.Telegram.WebApp;
     tg.ready();
     tg.expand();
 
+    // Инициализация юзера
     const currentUserId = tg.initDataUnsafe?.user?.id || 547418372;
-    const userName = tg.initDataUnsafe?.user?.first_name || "Николай";
-    document.getElementById("user-badge").textContent = userName;
+    const userName = tg.initDataUnsafe?.user?.first_name || "Пользователь";
+    document.getElementById("user-greeting").textContent = `Привет, ${userName}! Управляй домом.`;
 
+    // --- ЛОГИКА НАВИГАЦИИ (ПЕРЕКЛЮЧЕНИЕ ЭКРАНОВ) ---
+    function openScreen(screenId, devTitle = "") {
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      document.getElementById(screenId).classList.add('active');
+      
+      if (screenId === 'screen-dev') {
+        document.getElementById('dev-title').textContent = devTitle;
+      }
+      if (screenId === 'screen-notes') {
+        fetchNotes(); // Загружаем данные только при входе в модуль
+      }
+    }
+
+    // --- ЛОГИКА ЗАМЕТОК ---
     let isSharedTab = true;
     let allNotes = [];
 
@@ -255,21 +234,18 @@
     async function fetchNotes() {
       try {
         const res = await fetch(`${API_BASE}/api/notes`, { headers: { "x-user-id": currentUserId } });
-        if (res.ok) {
-          allNotes = await res.json();
-          renderNotes();
-        }
+        if (!res.ok) throw new Error("Server error");
+        allNotes = await res.json();
+        renderNotes();
       } catch (err) { 
-        console.error("Ошибка загрузки:", err); 
+        alert("⚠️ Ошибка соединения! Убедись, что сервер и туннель Cloudflare запущены.");
       }
     }
 
     function parseNotes(raw) {
       if (!raw) return [];
       try { return JSON.parse(raw); }
-      catch(e) {
-        return raw.split(/<br>|\\n|\n/).map(line => ({ text: line.replace(/<[^>]*>?/gm, '').trim(), done: false })).filter(l => l.text);
-      }
+      catch(e) { return []; }
     }
 
     function renderNotes() {
@@ -278,7 +254,7 @@
       const filtered = allNotes.filter(n => n.is_shared === isSharedTab);
 
       if (filtered.length === 0) {
-        container.innerHTML = `<div class="empty-state">Пока пусто. Добавьте новую тему выше ☝️</div>`;
+        container.innerHTML = `<div style="text-align:center; padding: 40px; color: #64748B;">Список пуст</div>`;
         return;
       }
 
@@ -317,7 +293,9 @@
           headers: { "Content-Type": "application/json", "x-user-id": currentUserId },
           body: JSON.stringify({ content: contentStr })
         });
-      } catch(e) {}
+      } catch(e) {
+        alert("Ошибка при сохранении.");
+      }
     }
 
     async function toggleItem(noteId, itemIdx) {
@@ -362,7 +340,9 @@
           input.value = ""; 
           await fetchNotes(); 
         }
-      } catch (err) {}
+      } catch (err) {
+        alert("Не удалось создать тему. Проверь сервер.");
+      }
     }
 
     async function deleteTopic(id) {
@@ -380,8 +360,6 @@
       div.innerText = text;
       return div.innerHTML;
     }
-
-    fetchNotes();
   </script>
 </body>
 </html>
