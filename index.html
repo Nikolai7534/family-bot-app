@@ -390,12 +390,12 @@
         let details = { price: "", url: "" };
         try { details = JSON.parse(wish.content); } catch(e) {}
         
-        let linkHtml = details.url ? `<button class="link-btn" onclick="openLinkSafely(event, '${details.url}')">Open Link</button>` : '';
+        let linkHtml = details.url ? `<button class="link-btn" onclick="copyLink(event, '${details.url}', this)">Copy Link</button>` : '';
 
         card.innerHTML = `
           <div class="wish-info">
             <div class="wish-name">${escapeHtml(realTitle)}</div>
-            <div class="wish-price">${escapeHtml(details.price)}</div>
+            <div class="wish-price">${details.price ? escapeHtml(details.price) + ' ₪' : ''}</div>
           </div>
           <div class="wish-actions">
             ${linkHtml}
@@ -431,17 +431,26 @@
       } catch (err) {}
     }
 
-    function openLinkSafely(e, url) {
+function copyLink(e, url, btn) {
       e.stopPropagation();
-      try {
-        if (tg && tg.openLink) {
-          tg.openLink(url);
-        } else {
-          window.open(url, '_blank');
-        }
-      } catch (err) {
-        window.open(url, '_blank');
-      }
+      
+      // Надежный метод копирования для WebApp
+      let textArea = document.createElement("textarea");
+      textArea.value = url;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand("Copy");
+      textArea.remove();
+      
+      // Анимация кнопки
+      let oldText = btn.innerText;
+      btn.innerText = "Copied!";
+      btn.style.background = "#16A34A"; // Зеленый цвет успеха
+      
+      setTimeout(() => {
+        btn.innerText = oldText;
+        btn.style.background = "#2563EB"; // Возвращаем синий
+      }, 1500);
     }
   </script>
 </body>
