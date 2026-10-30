@@ -105,9 +105,9 @@
         <div class="grid-icon">🎁</div>
         <div class="grid-label">Wishlist</div>
       </div>
-      <div class="grid-item bg-green" onclick="openScreen('screen-dev', 'Calendar')">
-        <div class="grid-icon">📅</div>
-        <div class="grid-label">Calendar</div>
+      <div class="grid-item bg-green" onclick="openScreen('screen-order')">
+        <div class="grid-icon">📦</div>
+        <div class="grid-label">To Order</div>
       </div>
       <div class="grid-item bg-purple" onclick="openScreen('screen-dev', 'Tasks')">
         <div class="grid-icon">📋</div>
@@ -178,14 +178,35 @@
     </div>
     <div id="wishlist-container"></div>
   </div>
+  <!-- 5. TO ORDER SCREEN -->
+  <div id="screen-order" class="screen">
+    <div class="nav-header">
+      <button class="back-btn" onclick="openScreen('screen-dashboard')">←</button>
+      <h2>To Order</h2>
+    </div>
+    <div class="tabs">
+      <button class="tab-btn active" id="tab-order-shared" onclick="setOrderTab(true)">Shared</button>
+      <button class="tab-btn" id="tab-order-personal" onclick="setOrderTab(false)">Personal</button>
+    </div>
+    <div class="wish-form">
+      <input type="text" id="order-name" class="wish-input" placeholder="Item name (e.g. AliExpress Case)">
+      <div class="wish-row">
+        <input type="text" id="order-price" class="wish-input" style="flex: 0.8; margin-bottom: 0;" placeholder="Price ($5)">
+        <input type="url" id="order-url" class="wish-input" style="flex: 1.2; margin-bottom: 0;" placeholder="Link (https://...)">
+      </div>
+      <button class="wish-submit" style="background: #16A34A;" onclick="createOrder()">Save to Order</button>
+    </div>
+    <div id="order-container"></div>
+  </div>
 
   <!-- =========================================
        MODULE: JAVASCRIPT LOGIC
        ========================================= -->
-  <script>
+<script>
     /* --- CORE SYSTEM --- */
     const API_BASE = "https://uplifting-fled-squiggly.ngrok-free.dev";
     const WISH_PREFIX = "[WISH]";
+    const ORDER_PREFIX = "[ORDER]";
 
     const tg = window.Telegram.WebApp;
     tg.ready();
@@ -198,13 +219,14 @@
     let allData = [];
     let isNotesShared = true;
     let isWishShared = true;
-    let expandedNotes = {}; // Remembers open state for Notes
+    let isOrderShared = true;
+    let expandedNotes = {}; 
 
     function openScreen(screenId, devTitle = "") {
       document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
       document.getElementById(screenId).classList.add('active');
       if (screenId === 'screen-dev') document.getElementById('dev-title').textContent = devTitle;
-      if (screenId === 'screen-notes' || screenId === 'screen-wishlist') fetchAllData();
+      if (screenId === 'screen-notes' || screenId === 'screen-wishlist' || screenId === 'screen-order') fetchAllData();
     }
 
     async function fetchAllData() {
@@ -217,6 +239,7 @@
         
         renderNotes();
         renderWishes();
+        renderOrders();
       } catch (err) { 
         alert("System Error: " + err.message + "\nCheck backend and Ngrok.");
       }
@@ -270,7 +293,7 @@
       if (!container) return;
       container.innerHTML = "";
       
-      const notes = allData.filter(n => n.is_shared === isNotesShared && !n.title.startsWith(WISH_PREFIX));
+      const notes = allData.filter(n => n.is_shared === isNotesShared && !n.title.startsWith(WISH_PREFIX) && !n.title.startsWith(ORDER_PREFIX));
       
       if (notes.length === 0) {
         container.innerHTML = `<div style="text-align:center; padding: 40px; color: #64748B;">List is empty</div>`;
@@ -431,10 +454,77 @@
       } catch (err) {}
     }
 
-function copyLink(e, url, btn) {
-      e.stopPropagation();
+    /* --- MODULE: TO ORDER --- */
+    function setOrderTab(shared) {
+      isOrderShared = shared;
+      document.getElementById("tab-order-shared").classList.toggle("active", shared);
+      document.getElementById("tab-order-personal").classList.toggle("active", !shared);
+      renderOrders();
+    }
+
+    function renderOrders() {
+      const container = document.getElementById("order-container");
+      if (!container) return;
+      container.innerHTML = "";
       
-      // Надежный метод копирования для WebApp
+      const orders = allData.filter(n => n.is_shared === isOrderShared && n.title.startsWith(ORDER_PREFIX));
+      
+      if (orders.length === 0) {
+        container.innerHTML = `<div style="text-align:center; padding: 40px; color: #64748B;">Nothing to order yet</div>`;
+        return;
+      }
+
+      orders.forEach(order => {
+        const card = document.createElement("div");
+        card.className = "wish-card";
+        const realTitle = order.title.replace(ORDER_PREFIX, "").trim();
+        let details = { price: "", url: "" };
+        try { details = JSON.parse(order.content); } catch(e) {}
+        
+        let linkHtml = details.url ? `<button class="link-btn" style="background: #16A34A;" onclick="copyLink(event, '${details.url}', this)">Copy Link</button>` : '';
+
+        card.innerHTML = `
+          <div class="wish-info">
+            <div class="wish-name">${escapeHtml(realTitle)}</div>
+            <div class="wish-price" style="color: #4ADE80;">${details.price ? escapeHtml(details.price) + ' ₪' : ''}</div>
+          </div>
+          <div class="wish-actions">
+            ${linkHtml}
+            <button class="del-btn" onclick="deleteItem(event, ${order.id})">Delete</button>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    async function createOrder() {
+      const nameInput = document.getElementById("order-name");
+      const priceInput = document.getElementById("order-price");
+      const urlInput = document.getElementById("order-url");
+      
+      const name = nameInput.value.trim();
+      if (!name) return;
+      
+      let url = urlInput.value.trim();
+      if (url && !url.startsWith('http')) url = 'https://' + url;
+
+      const title = `${ORDER_PREFIX} ${name}`;
+      const content = JSON.stringify({ price: priceInput.value.trim(), url: url });
+
+      try {
+        await fetch(`${API_BASE}/api/notes`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-user-id": String(currentUserId), "ngrok-skip-browser-warning": "true" },
+          body: JSON.stringify({ title: title, is_shared: isOrderShared, content: content })
+        });
+        nameInput.value = ""; priceInput.value = ""; urlInput.value = "";
+        fetchAllData(); 
+      } catch (err) {}
+    }
+
+    /* --- UTILS --- */
+    function copyLink(e, url, btn) {
+      e.stopPropagation();
       let textArea = document.createElement("textarea");
       textArea.value = url;
       document.body.appendChild(textArea);
@@ -442,14 +532,14 @@ function copyLink(e, url, btn) {
       document.execCommand("Copy");
       textArea.remove();
       
-      // Анимация кнопки
       let oldText = btn.innerText;
+      let oldBg = btn.style.background;
       btn.innerText = "Copied!";
-      btn.style.background = "#16A34A"; // Зеленый цвет успеха
+      btn.style.background = "#16A34A"; 
       
       setTimeout(() => {
         btn.innerText = oldText;
-        btn.style.background = "#2563EB"; // Возвращаем синий
+        btn.style.background = oldBg || "#2563EB"; 
       }, 1500);
     }
   </script>
