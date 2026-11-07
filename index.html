@@ -53,19 +53,19 @@
     .create-box input { flex: 1; padding: 12px 14px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05); color: #fff; outline: none; }
     .create-box button { padding: 0 18px; border: none; border-radius: 10px; background: #2563EB; color: white; font-size: 20px; font-weight: bold; cursor: pointer; }
     .card { background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255,255,255,0.05); border-radius: 14px; margin-bottom: 12px; overflow: hidden; }
-    .card-header { display: flex; justify-content: space-between; align-items: center; padding: 16px; cursor: pointer; transition: background 0.2s; }
+    .card-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; padding: 16px; cursor: pointer; transition: background 0.2s; }
     .card-header:active { background: rgba(255, 255, 255, 0.1); }
-    .card-title-group { display: flex; align-items: center; gap: 10px; }
-    .chevron { font-size: 12px; color: #64748B; transition: transform 0.3s; }
-    .card-title { font-weight: 700; font-size: 16px; color: #fff; }
+    .card-title-group { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; flex-wrap: wrap; }
+    .chevron { font-size: 12px; color: #64748B; transition: transform 0.3s; flex-shrink: 0; }
+    .card-title { font-weight: 700; font-size: 16px; color: #fff; word-break: break-word; overflow-wrap: anywhere; flex: 1; min-width: 120px; line-height: 1.35; }
     .card-body { padding: 0 16px 16px 16px; display: none; border-top: 1px solid rgba(255,255,255,0.05); margin-top: 4px; padding-top: 12px; }
-    .list-item { display: flex; align-items: center; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05); cursor: pointer; }
+    .list-item { display: flex; align-items: flex-start; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05); cursor: pointer; }
     .list-item:last-child { border-bottom: none; }
-    .checkbox { width: 22px; height: 22px; border-radius: 6px; border: 2px solid rgba(255,255,255,0.3); margin-right: 12px; display: flex; justify-content: center; align-items: center; position: relative; }
+    .checkbox { width: 22px; height: 22px; border-radius: 6px; border: 2px solid rgba(255,255,255,0.3); margin-right: 12px; margin-top: 2px; display: flex; justify-content: center; align-items: center; position: relative; flex-shrink: 0; }
     .list-item.done .checkbox { background: #2563EB; border-color: #2563EB; }
     .list-item.done .checkbox::after { content: 'V'; color: white; font-size: 12px; position: absolute; font-weight: bold; }
     .list-item.done .item-text { text-decoration: line-through; color: rgba(255,255,255,0.3); }
-    .item-text { flex: 1; font-size: 15px; }
+    .item-text { flex: 1; min-width: 0; font-size: 15px; line-height: 1.4; word-break: break-word; overflow-wrap: anywhere; white-space: pre-wrap; }
     .add-item-box { display: flex; margin-top: 12px; gap: 8px; }
     .add-item-box input { flex: 1; padding: 10px 12px; border-radius: 8px; border: none; background: rgba(0,0,0,0.2); color: #fff; outline: none; }
     .add-btn { background: rgba(255,255,255,0.1); color: #fff; border: none; border-radius: 8px; padding: 0 16px; font-weight: bold; cursor: pointer; }
