@@ -46,18 +46,18 @@
     .tabs { display: flex; gap: 8px; margin-bottom: 16px; background: rgba(0,0,0,0.3); padding: 4px; border-radius: 10px; }
     .tab-btn { flex: 1; padding: 10px; border: none; border-radius: 8px; background: transparent; color: rgba(255,255,255,0.5); font-weight: 600; cursor: pointer; transition: 0.2s;}
     .tab-btn.active { background: #2563EB; color: #fff; }
-    .del-btn { background: rgba(239, 68, 68, 0.2); border: none; color: #FCA5A5; font-size: 12px; font-weight: bold; border-radius: 6px; padding: 6px 10px; cursor: pointer; }
+    .del-btn { background: rgba(239, 68, 68, 0.2); border: none; color: #FCA5A5; font-size: 12px; font-weight: bold; border-radius: 6px; padding: 6px 10px; cursor: pointer; flex-shrink: 0; margin-left: 8px; }
 
     /* NOTES MODULE */
     .create-box { display: flex; gap: 8px; margin-bottom: 16px; }
     .create-box input { flex: 1; padding: 12px 14px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05); color: #fff; outline: none; }
     .create-box button { padding: 0 18px; border: none; border-radius: 10px; background: #2563EB; color: white; font-size: 20px; font-weight: bold; cursor: pointer; }
     .card { background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255,255,255,0.05); border-radius: 14px; margin-bottom: 12px; overflow: hidden; }
-    .card-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; padding: 16px; cursor: pointer; transition: background 0.2s; }
+    .card-header { display: flex; justify-content: space-between; align-items: flex-start; padding: 16px; cursor: pointer; transition: background 0.2s; gap: 8px; }
     .card-header:active { background: rgba(255, 255, 255, 0.1); }
-    .card-title-group { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; flex-wrap: wrap; }
-    .chevron { font-size: 12px; color: #64748B; transition: transform 0.3s; flex-shrink: 0; }
-    .card-title { font-weight: 700; font-size: 16px; color: #fff; word-break: break-word; overflow-wrap: anywhere; flex: 1; min-width: 120px; line-height: 1.35; }
+    .card-title-group { display: flex; align-items: flex-start; gap: 8px; flex: 1; min-width: 0; overflow: hidden; }
+    .chevron { font-size: 12px; color: #64748B; transition: transform 0.3s; flex-shrink: 0; margin-top: 4px; }
+    .card-title { font-weight: 700; font-size: 16px; color: #fff; flex: 1; min-width: 0; word-break: break-word; overflow-wrap: anywhere; white-space: normal; line-height: 1.35; }
     .card-body { padding: 0 16px 16px 16px; display: none; border-top: 1px solid rgba(255,255,255,0.05); margin-top: 4px; padding-top: 12px; }
     .list-item { display: flex; align-items: flex-start; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05); cursor: pointer; }
     .list-item:last-child { border-bottom: none; }
