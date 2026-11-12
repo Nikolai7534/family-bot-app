@@ -413,29 +413,31 @@
     let isNotesShared = true;
     let isWishShared = true;
     let isOrderShared = true;
-    let expandedNotes = {}; 
+    let expandedNotes = {};
 
     function openScreen(screenId, devTitle = "") {
       document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
       document.getElementById(screenId).classList.add('active');
       if (screenId === 'screen-dev') document.getElementById('dev-title').textContent = devTitle;
-      if (screenId === 'screen-notes' || screenId === 'screen-wishlist' || screenId === 'screen-order' || screenId === 'screen-tasks' || screenId === 'screen-finance') fetchAllData();
+      if (screenId === 'screen-notes' || screenId === 'screen-wishlist' || screenId === 'screen-order' || screenId === 'screen-tasks' || screenId === 'screen-finance') {
+        fetchAllData();
+      }
     }
 
     async function fetchAllData() {
       try {
-        const res = await fetch(`${API_BASE}/api/notes`, { 
-          headers: { "x-user-id": String(currentUserId), "ngrok-skip-browser-warning": "true" } 
+        const res = await fetch(`${API_BASE}/api/notes`, {
+          headers: { "x-user-id": String(currentUserId), "ngrok-skip-browser-warning": "true" }
         });
         if (!res.ok) throw new Error("Status: " + res.status);
         allData = await res.json();
-        
+
         renderNotes();
         renderWishes();
         renderOrders();
         renderTasks();
         renderFinance();
-      } catch (err) { 
+      } catch (err) {
         alert("System Error: " + err.message + "\nCheck backend and Ngrok.");
       }
     }
@@ -445,7 +447,8 @@
       if (!confirm("Delete this?")) return;
       try {
         await fetch(`${API_BASE}/api/notes/${id}`, {
-          method: "DELETE", headers: { "x-user-id": String(currentUserId), "ngrok-skip-browser-warning": "true" }
+          method: "DELETE",
+          headers: { "x-user-id": String(currentUserId), "ngrok-skip-browser-warning": "true" }
         });
         fetchAllData();
       } catch (err) {}
@@ -453,7 +456,7 @@
 
     function escapeHtml(text) {
       const div = document.createElement("div");
-      div.innerText = text;
+      div.innerText = text || "";
       return div.innerHTML;
     }
 
@@ -469,7 +472,7 @@
       expandedNotes[noteId] = !expandedNotes[noteId];
       const body = document.getElementById(`note-body-${noteId}`);
       const chevron = document.getElementById(`chevron-${noteId}`);
-      
+
       if (expandedNotes[noteId]) {
         body.style.display = 'block';
         chevron.style.transform = 'rotate(180deg)';
@@ -487,8 +490,17 @@
       const container = document.getElementById("notes-container");
       if (!container) return;
       container.innerHTML = "";
-      
-    const notes = allData.filter(n => n.is_shared === isNotesShared && !n.title.startsWith(WISH_PREFIX) && !n.title.startsWith(WISH_POLLY_PREFIX) && !n.title.startsWith(ORDER_PREFIX) && !n.title.startsWith(TASK_NIKOLAI_PREFIX) && !n.title.startsWith(TASK_POLLY_PREFIX) && !n.title.startsWith(FIN_PREFIX));      
+
+      const notes = allData.filter(n =>
+        n.is_shared === isNotesShared &&
+        !n.title.startsWith(WISH_PREFIX) &&
+        !n.title.startsWith(WISH_POLLY_PREFIX) &&
+        !n.title.startsWith(ORDER_PREFIX) &&
+        !n.title.startsWith(TASK_NIKOLAI_PREFIX) &&
+        !n.title.startsWith(TASK_POLLY_PREFIX) &&
+        !n.title.startsWith(FIN_PREFIX)
+      );
+
       if (notes.length === 0) {
         container.innerHTML = `<div style="text-align:center; padding: 40px; color: #64748B;">List is empty</div>`;
         return;
@@ -498,7 +510,7 @@
         const card = document.createElement("div");
         card.className = "card";
         const items = parseJSON(note.content);
-        
+
         const isExpanded = expandedNotes[note.id] === true;
         const displayStyle = isExpanded ? 'block' : 'none';
         const chevronTransform = isExpanded ? 'rotate(180deg)' : 'rotate(0deg)';
@@ -540,8 +552,8 @@
           headers: { "Content-Type": "application/json", "x-user-id": String(currentUserId), "ngrok-skip-browser-warning": "true" },
           body: JSON.stringify({ title: title, is_shared: isNotesShared, content: "[]" })
         });
-        input.value = ""; 
-        fetchAllData(); 
+        input.value = "";
+        fetchAllData();
       } catch (err) {}
     }
 
@@ -593,10 +605,10 @@
       const container = document.getElementById("wishlist-container");
       if (!container) return;
       container.innerHTML = "";
-      
+
       const activePrefix = isWishShared ? WISH_PREFIX : WISH_POLLY_PREFIX;
       const wishes = allData.filter(n => n.title.startsWith(activePrefix));
-      
+
       if (wishes.length === 0) {
         container.innerHTML = `<div style="text-align:center; padding: 40px; color: #64748B;">No wishes yet</div>`;
         return;
@@ -608,7 +620,7 @@
         const realTitle = wish.title.replace(WISH_PREFIX, "").replace(WISH_POLLY_PREFIX, "").trim();
         let details = { price: "", url: "" };
         try { details = JSON.parse(wish.content); } catch(e) {}
-        
+
         let linkHtml = details.url ? `<button class="link-btn" onclick="copyLink(event, '${details.url}', this)">Copy Link</button>` : '';
 
         card.innerHTML = `
@@ -629,10 +641,10 @@
       const nameInput = document.getElementById("wish-name");
       const priceInput = document.getElementById("wish-price");
       const urlInput = document.getElementById("wish-url");
-      
+
       const name = nameInput.value.trim();
       if (!name) return;
-      
+
       let url = urlInput.value.trim();
       if (url && !url.startsWith('http')) url = 'https://' + url;
 
@@ -647,7 +659,7 @@
           body: JSON.stringify({ title: title, is_shared: true, content: content })
         });
         nameInput.value = ""; priceInput.value = ""; urlInput.value = "";
-        fetchAllData(); 
+        fetchAllData();
       } catch (err) {}
     }
 
@@ -663,9 +675,9 @@
       const container = document.getElementById("order-container");
       if (!container) return;
       container.innerHTML = "";
-      
+
       const orders = allData.filter(n => n.is_shared === isOrderShared && n.title.startsWith(ORDER_PREFIX));
-      
+
       if (orders.length === 0) {
         container.innerHTML = `<div style="text-align:center; padding: 40px; color: #64748B;">Nothing to order yet</div>`;
         return;
@@ -677,7 +689,7 @@
         const realTitle = order.title.replace(ORDER_PREFIX, "").trim();
         let details = { price: "", url: "" };
         try { details = JSON.parse(order.content); } catch(e) {}
-        
+
         let linkHtml = details.url ? `<button class="link-btn" style="background: #16A34A;" onclick="copyLink(event, '${details.url}', this)">Copy Link</button>` : '';
 
         card.innerHTML = `
@@ -698,10 +710,10 @@
       const nameInput = document.getElementById("order-name");
       const priceInput = document.getElementById("order-price");
       const urlInput = document.getElementById("order-url");
-      
+
       const name = nameInput.value.trim();
       if (!name) return;
-      
+
       let url = urlInput.value.trim();
       if (url && !url.startsWith('http')) url = 'https://' + url;
 
@@ -715,7 +727,7 @@
           body: JSON.stringify({ title: title, is_shared: isOrderShared, content: content })
         });
         nameInput.value = ""; priceInput.value = ""; urlInput.value = "";
-        fetchAllData(); 
+        fetchAllData();
       } catch (err) {}
     }
 
@@ -798,7 +810,7 @@
         container.appendChild(card);
       });
     }
-  
+
     /* --- MODULE: FINANCE (1MONEY) --- */
     let isFinShared = true;
     let finSubView = "categories";
@@ -844,21 +856,8 @@
     function defaultFinState() {
       return {
         cycleDay: 10,
-        accounts: { Card: 0, Cash: 0, Other: 0 },
-        customCategories: [],
-        transactions: []
-      };
-    }
-
-    function getFinRecord() {
-      return allData.find(n => n.title === FIN_PREFIX && n.is_shared === isFinShared);
-    }
-
-    function getFinState() {
-      const rec = getFinRecord();function defaultFinState() {
-      return {
-        cycleDay: 10,
         budgetLimit: 0,
+        weeklyLimit: 0,
         accounts: { Card: 0, Cash: 0, Other: 0 },
         customCategories: [],
         transactions: []
@@ -877,6 +876,7 @@
         return {
           cycleDay: parsed.cycleDay || 10,
           budgetLimit: parsed.budgetLimit || 0,
+          weeklyLimit: parsed.weeklyLimit || 0,
           accounts: parsed.accounts || { Card: 0, Cash: 0, Other: 0 },
           customCategories: parsed.customCategories || [],
           transactions: parsed.transactions || []
@@ -974,7 +974,7 @@
         const start = new Date(base.getFullYear(), base.getMonth(), base.getDate() - base.getDay());
         const end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 7);
         const endDisp = new Date(end.getTime() - 86400000);
-        return { start, end, label: `${start.getDate()} ${months[start.getMonth()]} – ${endDisp.getDate()} ${months[endDisp.getMonth()]}` };
+        return { start, end, label: `SUN ${start.getDate()} ${months[start.getMonth()]} – SAT ${endDisp.getDate()} ${months[endDisp.getMonth()]}` };
       }
 
       let year = now.getFullYear();
@@ -1006,7 +1006,8 @@
     }
 
     function closeFinTxModal() {
-      document.getElementById("fin-tx-modal").style.display = "none";
+      const modal = document.getElementById("fin-tx-modal");
+      if (modal) modal.style.display = "none";
     }
 
     async function submitFinTx() {
@@ -1102,12 +1103,18 @@
       await saveFinState(state);
     }
 
-    async function setFinBudgetLimit() {
+    async function setFinBudgetLimits() {
       const state = getFinState();
-      const input = prompt("Set Monthly Expense Limit in ₪ (0 to disable):", state.budgetLimit || 0);
-      if (input === null) return;
-      const val = parseFloat(input);
-      state.budgetLimit = (isNaN(val) || val < 0) ? 0 : val;
+      const wInput = prompt("Set WEEKLY Expense Limit (Sun - Sat) in ₪ (0 to disable):", state.weeklyLimit || 0);
+      if (wInput !== null) {
+        const wVal = parseFloat(wInput);
+        state.weeklyLimit = (isNaN(wVal) || wVal < 0) ? 0 : wVal;
+      }
+      const mInput = prompt("Set MONTHLY Expense Limit in ₪ (0 to disable):", state.budgetLimit || 0);
+      if (mInput !== null) {
+        const mVal = parseFloat(mInput);
+        state.budgetLimit = (isNaN(mVal) || mVal < 0) ? 0 : mVal;
+      }
       await saveFinState(state);
     }
 
@@ -1185,6 +1192,34 @@
       `;
     }
 
+    /* Helper: Build Sunday-to-Saturday Weekly Buckets for the Period */
+    function buildSunSatBuckets(periodStart, periodEnd, txs) {
+      const buckets = [];
+      const firstSun = new Date(periodStart.getFullYear(), periodStart.getMonth(), periodStart.getDate() - periodStart.getDay());
+      let cur = new Date(firstSun);
+
+      while (cur < periodEnd && buckets.length < 6) {
+        const nextSun = new Date(cur.getFullYear(), cur.getMonth(), cur.getDate() + 7);
+        const sat = new Date(nextSun.getTime() - 86400000);
+        const label = `${cur.getDate()}/${cur.getMonth() + 1}–${sat.getDate()}/${sat.getMonth() + 1}`;
+        buckets.push({ start: new Date(cur), end: nextSun, label: label, sum: 0 });
+        cur = nextSun;
+      }
+
+      txs.forEach(t => {
+        if (t.type === "expense") {
+          const d = new Date(t.date);
+          for (let i = 0; i < buckets.length; i++) {
+            if (d >= buckets[i].start && d < buckets[i].end) {
+              buckets[i].sum += t.amount;
+              break;
+            }
+          }
+        }
+      });
+      return buckets;
+    }
+
     function renderFinance() {
       const container = document.getElementById("fin-wheel-container");
       if (!container) return;
@@ -1211,13 +1246,23 @@
 
       const now = new Date();
       const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      const weekAgo = new Date(todayStart.getTime() - 6 * 86400000);
+      /* Current Week: Sunday 00:00 to Saturday 23:59 */
+      const currentWeekSun = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay());
+      const currentWeekNextSun = new Date(currentWeekSun.getFullYear(), currentWeekSun.getMonth(), currentWeekSun.getDate() + 7);
+
       let todayExp = 0;
-      let weekExp = 0;
+      let currentWeekExp = 0;
+
+      state.transactions.forEach(t => {
+        if (t.type === "expense") {
+          const d = new Date(t.date);
+          if (d >= todayStart) todayExp += t.amount;
+          if (d >= currentWeekSun && d < currentWeekNextSun) currentWeekExp += t.amount;
+        }
+      });
 
       periodTxs.forEach(t => {
         const actor = (t.user === "Polly") ? "Polly" : "Nikolai";
-        const d = new Date(t.date);
         if (t.type === "income") {
           totalInc += t.amount;
           actorStats[actor].inc += t.amount;
@@ -1225,8 +1270,6 @@
           totalExp += t.amount;
           catSums[t.category] = (catSums[t.category] || 0) + t.amount;
           actorStats[actor].exp += t.amount;
-          if (d >= todayStart) todayExp += t.amount;
-          if (d >= weekAgo) weekExp += t.amount;
         }
       });
 
@@ -1302,7 +1345,7 @@
         }
       }
 
-      /* 3. Render Accounts List + Transfer Button */
+      /* 3. Render Accounts List */
       const accList = document.getElementById("fin-accounts-list");
       if (accList) {
         const accMeta = [
@@ -1336,42 +1379,32 @@
         }
       }
 
-      /* 5. Render Overview (1Money Trend Chart, KPIs, Budget Limit & Breakdown) */
+      /* 5. Render Overview (Sun-Sat Weekly Bars, Weekly & Monthly Limits, Breakdown) */
       const ovBox = document.getElementById("fin-overview-box");
       if (ovBox) {
-        /* Build 5-segment Period Trend Bars */
-        const spanMs = Math.max(1, bounds.end.getTime() - bounds.start.getTime());
-        const segMs = spanMs / 5;
-        const buckets = [0, 0, 0, 0, 0];
-        const bucketLabels = [];
-        for (let i = 0; i < 5; i++) {
-          const sDate = new Date(bounds.start.getTime() + i * segMs);
-          bucketLabels.push(`${sDate.getDate()}/${sDate.getMonth() + 1}`);
-        }
-        periodTxs.forEach(t => {
-          if (t.type === "expense") {
-            const idx = Math.min(4, Math.max(0, Math.floor((new Date(t.date).getTime() - bounds.start.getTime()) / segMs)));
-            buckets[idx] += t.amount;
-          }
-        });
-        const maxBucket = Math.max(...buckets, 1);
-        const barsHtml = buckets.map((val, i) => {
-          const hPct = Math.max(5, Math.round((val / maxBucket) * 100));
+        const sunSatBuckets = buildSunSatBuckets(bounds.start, bounds.end, periodTxs);
+        const maxBucket = Math.max(...sunSatBuckets.map(b => b.sum), 1);
+        const barsHtml = sunSatBuckets.map((b, idx) => {
+          const hPct = Math.max(5, Math.round((b.sum / maxBucket) * 100));
           return `
             <div class="fin-bar-col">
-              <div class="fin-bar-amt">${val > 0 ? val.toLocaleString() : ''}</div>
-              <div class="fin-bar-v" style="height:${hPct}%; opacity:${val > 0 ? 1 : 0.2};"></div>
-              <div class="fin-bar-lbl">${bucketLabels[i]}</div>
+              <div class="fin-bar-amt">${b.sum > 0 ? b.sum.toLocaleString() : ''}</div>
+              <div class="fin-bar-v" style="height:${hPct}%; opacity:${b.sum > 0 ? 1 : 0.2};"></div>
+              <div class="fin-bar-lbl">W${idx + 1}<br><span style="font-size:9px;">${b.label}</span></div>
             </div>
           `;
         }).join('');
 
-        /* Budget Progress Calculation */
-        const limit = state.budgetLimit || 0;
-        const limitPct = limit > 0 ? Math.min(100, Math.round((totalExp / limit) * 100)) : 0;
-        const limitColor = limitPct >= 90 ? "#F43F5E" : (limitPct >= 75 ? "#F59E0B" : "#10B981");
+        /* Weekly & Monthly Budget Calculations */
+        const wLimit = state.weeklyLimit || 0;
+        const wPct = wLimit > 0 ? Math.min(100, Math.round((currentWeekExp / wLimit) * 100)) : 0;
+        const wColor = wPct >= 90 ? "#F43F5E" : (wPct >= 75 ? "#F59E0B" : "#3B82F6");
+
+        const mLimit = state.budgetLimit || 0;
+        const mPct = mLimit > 0 ? Math.min(100, Math.round((totalExp / mLimit) * 100)) : 0;
+        const mColor = mPct >= 90 ? "#F43F5E" : (mPct >= 75 ? "#F59E0B" : "#10B981");
         const daysLeft = Math.max(1, Math.ceil((bounds.end.getTime() - now.getTime()) / 86400000));
-        const safePerDay = (limit > totalExp) ? Math.round((limit - totalExp) / daysLeft) : 0;
+        const safePerDay = (mLimit > totalExp) ? Math.round((mLimit - totalExp) / daysLeft) : 0;
 
         const sortedCats = allCats
           .map(c => ({ ...c, spent: catSums[c.name] || 0 }))
@@ -1409,7 +1442,6 @@
             </div>
           </div>
 
-          <!-- 1Money Style KPI Boxes: Day (avg) / Today / 7 Days -->
           <div class="fin-kpi-row">
             <div class="fin-kpi-box">
               <div class="fin-kpi-lbl">Day (avg.)</div>
@@ -1420,34 +1452,58 @@
               <div class="fin-kpi-val">${todayExp.toLocaleString()} ₪</div>
             </div>
             <div class="fin-kpi-box">
-              <div class="fin-kpi-lbl">Last 7 Days</div>
-              <div class="fin-kpi-val">${weekExp.toLocaleString()} ₪</div>
+              <div class="fin-kpi-lbl">This Week (Sun–Sat)</div>
+              <div class="fin-kpi-val">${currentWeekExp.toLocaleString()} ₪</div>
             </div>
           </div>
 
-          <!-- Spending Trend Bar Chart -->
+          <!-- Weekly Trend Chart (Sun-Sat) -->
           <div class="fin-chart-card">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-              <span style="font-size:11px; color:#94A3B8; font-weight:700; text-transform:uppercase;">Spending Dynamics</span>
+              <span style="font-size:11px; color:#94A3B8; font-weight:700; text-transform:uppercase;">Weekly Spending (Sun – Sat)</span>
               <span style="font-size:11px; color:#64748B;">Net: ${(totalInc - totalExp).toLocaleString()} ₪</span>
             </div>
             <div class="fin-chart-bars">${barsHtml}</div>
           </div>
 
-          <!-- Monthly Budget Limit & Safe Daily Spend -->
-          <div class="fin-top-card" style="text-align:left; margin-bottom:14px; cursor:pointer;" onclick="setFinBudgetLimit()">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-              <span style="font-size:12px; color:#94A3B8; font-weight:700; text-transform:uppercase;">🎯 Monthly Budget Limit</span>
-              <span style="font-size:12px; color:#60A5FA; font-weight:700;">${limit > 0 ? `${totalExp.toLocaleString()} / ${limit.toLocaleString()} ₪ (${limitPct}%)` : 'Tap to set limit ✎'}</span>
+          <!-- Dual Budget Limits: Weekly (Sun-Sat) & Monthly -->
+          <div class="fin-top-card" style="text-align:left; margin-bottom:14px; cursor:pointer;" onclick="setFinBudgetLimits()">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+              <span style="font-size:12px; color:#94A3B8; font-weight:700; text-transform:uppercase;">🎯 Budget Limits (Weekly & Monthly)</span>
+              <span style="font-size:11px; color:#60A5FA; font-weight:700;">Tap to edit ✎</span>
             </div>
-            ${limit > 0 ? `
-              <div class="fin-bar-bg" style="height:9px; margin-top:8px;">
-                <div class="fin-bar-fill" style="width:${limitPct}%; background:${limitColor};"></div>
+
+            <!-- Weekly Limit Row -->
+            <div style="margin-bottom:10px;">
+              <div style="display:flex; justify-content:space-between; font-size:12px; font-weight:700;">
+                <span>📅 Weekly (Sun–Sat):</span>
+                <span>${wLimit > 0 ? `${currentWeekExp.toLocaleString()} / ${wLimit.toLocaleString()} ₪ (${wPct}%)` : 'Not set'}</span>
               </div>
-              <div style="font-size:11px; color:#94A3B8; margin-top:6px;">
-                ${limit > totalExp ? `✅ Safe daily spend: <b>${safePerDay.toLocaleString()} ₪/day</b> (${daysLeft} days left)` : `⚠️ Budget exceeded by <b>${(totalExp - limit).toLocaleString()} ₪</b>`}
+              ${wLimit > 0 ? `
+                <div class="fin-bar-bg" style="height:8px; margin-top:5px;">
+                  <div class="fin-bar-fill" style="width:${wPct}%; background:${wColor};"></div>
+                </div>
+                <div style="font-size:11px; color:#94A3B8; margin-top:4px;">
+                  ${wLimit >= currentWeekExp ? `Remaining this week: <b>${(wLimit - currentWeekExp).toLocaleString()} ₪</b>` : `⚠️ Over weekly limit by <b>${(currentWeekExp - wLimit).toLocaleString()} ₪</b>`}
+                </div>
+              ` : ''}
+            </div>
+
+            <!-- Monthly Limit Row -->
+            <div>
+              <div style="display:flex; justify-content:space-between; font-size:12px; font-weight:700;">
+                <span>📆 Monthly (${bounds.label}):</span>
+                <span>${mLimit > 0 ? `${totalExp.toLocaleString()} / ${mLimit.toLocaleString()} ₪ (${mPct}%)` : 'Not set'}</span>
               </div>
-            ` : ''}
+              ${mLimit > 0 ? `
+                <div class="fin-bar-bg" style="height:8px; margin-top:5px;">
+                  <div class="fin-bar-fill" style="width:${mPct}%; background:${mColor};"></div>
+                </div>
+                <div style="font-size:11px; color:#94A3B8; margin-top:4px;">
+                  ${mLimit >= totalExp ? `Safe daily spend: <b>${safePerDay.toLocaleString()} ₪/day</b> (${daysLeft}d left)` : `⚠️ Over monthly limit by <b>${(totalExp - mLimit).toLocaleString()} ₪</b>`}
+                </div>
+              ` : ''}
+            </div>
           </div>
 
           ${isFinShared ? `
@@ -1475,24 +1531,24 @@
 
     /* --- UTILS --- */
     function copyLink(e, url, btn) {
-      e.stopPropagation();
+      if (e && e.stopPropagation) e.stopPropagation();
       let textArea = document.createElement("textarea");
       textArea.value = url;
       document.body.appendChild(textArea);
       textArea.select();
       document.execCommand("Copy");
       textArea.remove();
-      
+
       let oldText = btn.innerText;
       let oldBg = btn.style.background;
       btn.innerText = "Copied!";
-      btn.style.background = "#16A34A"; 
-      
+      btn.style.background = "#16A34A";
+
       setTimeout(() => {
         btn.innerText = oldText;
-        btn.style.background = oldBg || "#2563EB"; 
+        btn.style.background = oldBg || "#2563EB";
       }, 1500);
     }
-  </script>
+</script>
 </body>
 </html>
