@@ -319,7 +319,7 @@
     <!-- Quick Add Expense / Income Modal with Actor Tracking -->
     <div id="fin-tx-modal" class="fin-modal">
       <div class="assign-title" id="fin-tx-modal-title">Add Transaction</div>
-      <div class="fin-actor-pick">
+      <div class="fin-actor-pick" id="fin-actor-row">
         <button class="fin-actor-btn" id="fin-actor-nikolai" onclick="setFinActor('Nikolai')">👤 By: Nikolai</button>
         <button class="fin-actor-btn" id="fin-actor-polly" onclick="setFinActor('Polly')">👤 By: Polly</button>
       </div>
@@ -883,6 +883,7 @@
     function setFinScope(shared) {
       isFinShared = shared;
       finMonthOffset = 0;
+      closeFinTxModal();
       document.getElementById("tab-fin-shared").classList.toggle("active", shared);
       document.getElementById("tab-fin-personal").classList.toggle("active", !shared);
       document.getElementById("fin-scope-label").textContent = shared ? "All Family Accounts" : `${detectDefaultActor()}'s Personal Accounts`;
@@ -963,8 +964,11 @@
     function openFinTxModal(type, categoryName) {
       activeFinTxType = type;
       activeFinCategory = categoryName;
-      setFinActor(detectDefaultActor());
-      document.getElementById("fin-tx-modal-title").textContent = type === "income" ? "➕ Add Income" : `💸 Expense: ${categoryName}`;
+      const myName = detectDefaultActor();
+      setFinActor(myName);
+      const actorRow = document.getElementById("fin-actor-row");
+      if (actorRow) actorRow.style.display = isFinShared ? "flex" : "none";
+      document.getElementById("fin-tx-modal-title").textContent = type === "income" ? `➕ Add Income (${isFinShared ? 'Shared' : myName})` : `💸 ${categoryName} (${isFinShared ? 'Shared' : myName})`;
       document.getElementById("fin-tx-submit-btn").style.background = type === "income" ? "#10B981" : "#2563EB";
       document.getElementById("fin-tx-amount").value = "";
       document.getElementById("fin-tx-note").value = "";
