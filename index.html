@@ -819,6 +819,9 @@
     let activeFinTxType = "expense";
     let activeFinCategory = "";
     let activeFinActor = (Number(currentUserId) === 191692918) ? "Polly" : "Nikolai";
+    let editingFinAccount = "Card";
+    let finAccEditMode = "add";
+    let finAccSource = "Salary";
 
     const DEFAULT_FIN_CATEGORIES = [
       { id: "home", name: "Home", icon: "🏠", color: "#3B82F6" },
@@ -913,6 +916,7 @@
       isFinShared = shared;
       finMonthOffset = 0;
       closeFinTxModal();
+      closeFinAccModal();
       document.getElementById("tab-fin-shared").classList.toggle("active", shared);
       document.getElementById("tab-fin-personal").classList.toggle("active", !shared);
       document.getElementById("fin-scope-label").textContent = shared ? "All Family Accounts" : `${detectDefaultActor()}'s Personal Accounts`;
@@ -997,7 +1001,7 @@
       setFinActor(myName);
       const actorRow = document.getElementById("fin-actor-row");
       if (actorRow) actorRow.style.display = isFinShared ? "flex" : "none";
-      document.getElementById("fin-tx-modal-title").textContent = type === "income" ? `➕ Add Income (${isFinShared ? 'Shared' : myName})` : `💸 ${categoryName} (${isFinShared ? 'Shared' : myName})`;
+      document.getElementById("fin-tx-modal-title").textContent = type === "income" ? `➕ Add Income` : `💸 ${categoryName}`;
       document.getElementById("fin-tx-submit-btn").style.background = type === "income" ? "#10B981" : "#2563EB";
       document.getElementById("fin-tx-amount").value = "";
       document.getElementById("fin-tx-note").value = "";
@@ -1053,28 +1057,87 @@
       await saveFinState(state);
     }
 
-    async function editFinAccount(accName) {
+    /* Account Modal: Add Salary/Gift or Set Exact Balance */
+    function editFinAccount(accName) {
+      editingFinAccount = accName;
       const state = getFinState();
       const currentVal = state.accounts[accName] || 0;
-      const actor = detectDefaultActor();
-      const input = prompt(`[${actor}] Set balance for ${accName} (₪):`, currentVal);
-      if (input === null) return;
-      const val = parseFloat(input);
+      document.getElementById("fin-acc-modal-title").textContent = `${accName} (Current: ${currentVal.toLocaleString()} ₪)`;
+      document.getElementById("fin-acc-input-val").value = "";
+      document.getElementById("fin-acc-input-note").value = "";
+      setFinAccMode("add");
+      selectFinAccSource("Salary");
+      document.getElementById("fin-acc-modal").style.display = "block";
+      document.getElementById("fin-acc-input-val").focus();
+    }
+
+    function closeFinAccModal() {
+      const m = document.getElementById("fin-acc-modal");
+      if (m) m.style.display = "none";
+    }
+
+    function setFinAccMode(mode) {
+      finAccEditMode = mode;
+      document.getElementById("fin-acc-mode-add").classList.toggle("active", mode === "add");
+      document.getElementById("fin-acc-mode-set").classList.toggle("active", mode === "set");
+      document.getElementById("fin-acc-reason-box").style.display = (mode === "add") ? "block" : "none";
+      const state = getFinState();
+      const input = document.getElementById("fin-acc-input-val");
+      if (mode === "set") {
+        input.value = state.accounts[editingFinAccount] || 0;
+        input.placeholder = "New exact balance in ₪";
+      } else {
+        input.value = "";
+        input.placeholder = "Amount to ADD in ₪ (e.g. 5000)";
+      }
+    }
+
+    function selectFinAccSource(src) {
+      finAccSource = src;
+      ["Salary", "Gift", "Bonus", "Other"].forEach(s => {
+        const btn = document.getElementById(`fin-src-${s}`);
+        if (btn) btn.className = "fin-actor-btn" + (s === src ? " active-nikolai" : "");
+      });
+    }
+
+    async function saveFinAccountModal() {
+      const val = parseFloat(document.getElementById("fin-acc-input-val").value);
       if (isNaN(val)) return;
-      const diff = val - currentVal;
-      state.accounts[accName] = val;
-      if (diff !== 0) {
+      const note = document.getElementById("fin-acc-input-note").value.trim();
+      const actor = detectDefaultActor();
+      const state = getFinState();
+      const currentVal = state.accounts[editingFinAccount] || 0;
+
+      if (finAccEditMode === "add") {
+        if (val <= 0) return;
+        state.accounts[editingFinAccount] = currentVal + val;
         state.transactions.unshift({
           id: Date.now(),
-          type: diff > 0 ? "income" : "expense",
-          category: "Balance Adjust",
-          account: accName,
-          amount: Math.abs(diff),
-          note: `Manual balance set to ${val} ₪`,
+          type: "income",
+          category: finAccSource,
+          account: editingFinAccount,
+          amount: val,
+          note: note || `${finAccSource} added`,
           user: actor,
           date: new Date().toISOString()
         });
+      } else {
+        const diff = val - currentVal;
+        state.accounts[editingFinAccount] = val;
+        if (diff !== 0) {
+          state.transactions.unshift({
+            id: Date.now(),
+            type: diff > 0 ? "income" : "expense",
+            category: "Balance Edit",
+            account: editingFinAccount,
+            amount: Math.abs(diff),
+            note: note || `Set balance to ${val} ₪`,
+            user: actor,
+            date: new Date().toISOString()
+          });
+        }
       }
+      closeFinAccModal();
       await saveFinState(state);
     }
 
@@ -1103,18 +1166,54 @@
       await saveFinState(state);
     }
 
-    async function setFinBudgetLimits() {
+    function setFinBudgetLimits() {
       const state = getFinState();
-      const wInput = prompt("Set WEEKLY Expense Limit (Sun - Sat) in ₪ (0 to disable):", state.weeklyLimit || 0);
-      if (wInput !== null) {
-        const wVal = parseFloat(wInput);
-        state.weeklyLimit = (isNaN(wVal) || wVal < 0) ? 0 : wVal;
-      }
-      const mInput = prompt("Set MONTHLY Expense Limit in ₪ (0 to disable):", state.budgetLimit || 0);
-      if (mInput !== null) {
-        const mVal = parseFloat(mInput);
-        state.budgetLimit = (isNaN(mVal) || mVal < 0) ? 0 : mVal;
-      }
+      document.getElementById("fin-input-wlimit").value = state.weeklyLimit || "";
+      document.getElementById("fin-input-mlimit").value = state.budgetLimit || "";
+      document.getElementById("fin-limits-modal").style.display = "block";
+    }
+
+    async function saveFinBudgetLimitsModal() {
+      const state = getFinState();
+      const wVal = parseFloat(document.getElementById("fin-input-wlimit").value);
+      const mVal = parseFloat(document.getElementById("fin-input-mlimit").value);
+      state.weeklyLimit = (isNaN(wVal) || wVal < 0) ? 0 : wVal;
+      state.budgetLimit = (isNaN(mVal) || mVal < 0) ? 0 : mVal;
+      document.getElementById("fin-limits-modal").style.display = "none";
+      await saveFinState(state);
+    }
+
+    function addCustomFinCategory() {
+      document.getElementById("fin-new-cat-name").value = "";
+      document.getElementById("fin-new-cat-icon").value = "✨";
+      document.getElementById("fin-cat-modal").style.display = "block";
+      document.getElementById("fin-new-cat-name").focus();
+    }
+
+    async function saveCustomFinCategoryModal() {
+      const name = document.getElementById("fin-new-cat-name").value.trim();
+      if (!name) return;
+      const icon = document.getElementById("fin-new-cat-icon").value.trim() || "✨";
+      const colors = ["#3B82F6", "#10B981", "#F59E0B", "#EC4899", "#8B5CF6", "#06B6D4"];
+      const color = colors[Math.floor(Math.random() * colors.length)];
+
+      const state = getFinState();
+      state.customCategories.push({
+        id: "cust_" + Date.now(),
+        name: name,
+        icon: icon,
+        color: color,
+        isCustom: true
+      });
+      document.getElementById("fin-cat-modal").style.display = "none";
+      await saveFinState(state);
+    }
+
+    async function deleteCustomFinCategory(e, catName) {
+      e.stopPropagation();
+      if (!confirm(`Delete custom category "${catName}"?`)) return;
+      const state = getFinState();
+      state.customCategories = (state.customCategories || []).filter(c => c.name !== catName);
       await saveFinState(state);
     }
 
@@ -1139,23 +1238,6 @@
 
       const reportText = `📊 Finance Report (${isFinShared ? 'Family Shared' : detectDefaultActor()})\n📅 Period: ${bounds.label}\n💰 Total Balance: ${totalBal} ₪\n📉 Expenses: -${exp} ₪\n📈 Income: +${inc} ₪\n${topCats ? '\nTop Categories:\n' + topCats : ''}`;
       copyLink(new Event('click'), reportText, btn);
-    }
-
-    async function addCustomFinCategory() {
-      const name = prompt("New category name (e.g. Subscriptions):");
-      if (!name || !name.trim()) return;
-      const icon = prompt("Choose an emoji icon (e.g. 🎮, 🐶, ✈️):", "✨") || "✨";
-      const colors = ["#3B82F6", "#10B981", "#F59E0B", "#EC4899", "#8B5CF6", "#06B6D4"];
-      const color = colors[Math.floor(Math.random() * colors.length)];
-
-      const state = getFinState();
-      state.customCategories.push({
-        id: "cust_" + Date.now(),
-        name: name.trim(),
-        icon: icon.trim(),
-        color: color
-      });
-      await saveFinState(state);
     }
 
     function formatFinTxRow(t, allCats, allowDelete = true) {
@@ -1192,7 +1274,6 @@
       `;
     }
 
-    /* Helper: Build Sunday-to-Saturday Weekly Buckets for the Period */
     function buildSunSatBuckets(periodStart, periodEnd, txs) {
       const buckets = [];
       const firstSun = new Date(periodStart.getFullYear(), periodStart.getMonth(), periodStart.getDate() - periodStart.getDay());
@@ -1246,7 +1327,6 @@
 
       const now = new Date();
       const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      /* Current Week: Sunday 00:00 to Saturday 23:59 */
       const currentWeekSun = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay());
       const currentWeekNextSun = new Date(currentWeekSun.getFullYear(), currentWeekSun.getMonth(), currentWeekSun.getDate() + 7);
 
@@ -1277,7 +1357,8 @@
       const elapsedDays = Math.max(1, Math.ceil(elapsedMs / 86400000));
       const avgDayExp = Math.round(totalExp / elapsedDays);
 
-      const allCats = [...DEFAULT_FIN_CATEGORIES, ...(state.customCategories || [])];
+      const customMarked = (state.customCategories || []).map(c => ({ ...c, isCustom: true }));
+      const allCats = [...DEFAULT_FIN_CATEGORIES, ...customMarked];
 
       /* 1. Build Conic Gradient for Donut */
       let gradientStr = "#334155 0deg 360deg";
@@ -1295,7 +1376,7 @@
         if (stops.length > 0) gradientStr = stops.join(", ");
       }
 
-      /* 2. Render Categories Wheel */
+      /* 2. Render Categories Wheel (with Delete button on custom categories) */
       container.innerHTML = "";
       const donutCell = document.createElement("div");
       donutCell.className = "fin-donut-cell";
@@ -1314,10 +1395,13 @@
         const sum = catSums[c.name] || 0;
         const item = document.createElement("div");
         item.className = "fin-cat-item";
+        item.style.position = "relative";
         item.onclick = () => openFinTxModal("expense", c.name);
+        const delBadge = c.isCustom ? `<span onclick="deleteCustomFinCategory(event, '${escapeHtml(c.name)}')" style="position:absolute; top:14px; right:8px; background:#EF4444; color:#fff; width:18px; height:18px; border-radius:50%; font-size:10px; font-weight:800; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 6px rgba(0,0,0,0.5);">✕</span>` : '';
         item.innerHTML = `
           <div class="fin-cat-name">${escapeHtml(c.name)}</div>
           <div class="fin-cat-circle" style="background:${c.color}22; border-color:${c.color};">${c.icon}</div>
+          ${delBadge}
           <div class="fin-cat-val ${sum > 0 ? 'spent' : ''}">${sum.toLocaleString()} ₪</div>
         `;
         container.appendChild(item);
@@ -1345,13 +1429,13 @@
         }
       }
 
-      /* 3. Render Accounts List */
+      /* 3. Render Accounts List (Tap to Add Salary/Gift or Edit Balance) */
       const accList = document.getElementById("fin-accounts-list");
       if (accList) {
         const accMeta = [
-          { key: "Card", icon: "💳", bg: "#3B82F6" },
-          { key: "Cash", icon: "💵", bg: "#10B981" },
-          { key: "Other", icon: "🏦", bg: "#EC4899" }
+          { key: "Card", icon: "💳", bg: "#3B82F6", sub: "Tap to add Salary / Gift or edit total" },
+          { key: "Cash", icon: "💵", bg: "#10B981", sub: "Tap to add Cash / Gift or edit total" },
+          { key: "Other", icon: "🏦", bg: "#EC4899", sub: "Tap to add Savings / Bonus or edit total" }
         ];
         accList.innerHTML = accMeta.map(a => `
           <div class="fin-acc-card" onclick="editFinAccount('${a.key}')">
@@ -1359,7 +1443,7 @@
               <div class="fin-acc-icon" style="background:${a.bg};">${a.icon}</div>
               <div>
                 <div class="fin-acc-title">${a.key}</div>
-                <div style="font-size:11px; color:#94A3B8;">Tap to set exact balance</div>
+                <div style="font-size:11px; color:#94A3B8;">${a.sub}</div>
               </div>
             </div>
             <div class="fin-acc-bal">${(state.accounts[a.key] || 0).toLocaleString()} ₪</div>
@@ -1379,7 +1463,7 @@
         }
       }
 
-      /* 5. Render Overview (Sun-Sat Weekly Bars, Weekly & Monthly Limits, Breakdown) */
+      /* 5. Render Overview (True >100% Percentages & Smart Next-Week Saving Advice) */
       const ovBox = document.getElementById("fin-overview-box");
       if (ovBox) {
         const sunSatBuckets = buildSunSatBuckets(bounds.start, bounds.end, periodTxs);
@@ -1395,14 +1479,19 @@
           `;
         }).join('');
 
-        /* Weekly & Monthly Budget Calculations */
+        /* True Percentage (120%, 150%...) + Bar Width Clamped at 100% */
         const wLimit = state.weeklyLimit || 0;
-        const wPct = wLimit > 0 ? Math.min(100, Math.round((currentWeekExp / wLimit) * 100)) : 0;
-        const wColor = wPct >= 90 ? "#F43F5E" : (wPct >= 75 ? "#F59E0B" : "#3B82F6");
+        const wTruePct = wLimit > 0 ? Math.round((currentWeekExp / wLimit) * 100) : 0;
+        const wBarPct = Math.min(100, wTruePct);
+        const wColor = wTruePct > 100 ? "#F43F5E" : (wTruePct >= 80 ? "#F59E0B" : "#3B82F6");
+        const wOver = currentWeekExp - wLimit;
+        const nextWeekTarget = Math.max(0, wLimit - wOver);
+        const nextWeekDaily = Math.round(nextWeekTarget / 7);
 
         const mLimit = state.budgetLimit || 0;
-        const mPct = mLimit > 0 ? Math.min(100, Math.round((totalExp / mLimit) * 100)) : 0;
-        const mColor = mPct >= 90 ? "#F43F5E" : (mPct >= 75 ? "#F59E0B" : "#10B981");
+        const mTruePct = mLimit > 0 ? Math.round((totalExp / mLimit) * 100) : 0;
+        const mBarPct = Math.min(100, mTruePct);
+        const mColor = mTruePct > 100 ? "#F43F5E" : (mTruePct >= 80 ? "#F59E0B" : "#10B981");
         const daysLeft = Math.max(1, Math.ceil((bounds.end.getTime() - now.getTime()) / 86400000));
         const safePerDay = (mLimit > totalExp) ? Math.round((mLimit - totalExp) / daysLeft) : 0;
 
@@ -1457,7 +1546,6 @@
             </div>
           </div>
 
-          <!-- Weekly Trend Chart (Sun-Sat) -->
           <div class="fin-chart-card">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
               <span style="font-size:11px; color:#94A3B8; font-weight:700; text-transform:uppercase;">Weekly Spending (Sun – Sat)</span>
@@ -1466,41 +1554,46 @@
             <div class="fin-chart-bars">${barsHtml}</div>
           </div>
 
-          <!-- Dual Budget Limits: Weekly (Sun-Sat) & Monthly -->
+          <!-- Dual Budget Limits with True >100% & Smart Recovery Advice -->
           <div class="fin-top-card" style="text-align:left; margin-bottom:14px; cursor:pointer;" onclick="setFinBudgetLimits()">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
               <span style="font-size:12px; color:#94A3B8; font-weight:700; text-transform:uppercase;">🎯 Budget Limits (Weekly & Monthly)</span>
               <span style="font-size:11px; color:#60A5FA; font-weight:700;">Tap to edit ✎</span>
             </div>
 
-            <!-- Weekly Limit Row -->
-            <div style="margin-bottom:10px;">
+            <div style="margin-bottom:12px;">
               <div style="display:flex; justify-content:space-between; font-size:12px; font-weight:700;">
                 <span>📅 Weekly (Sun–Sat):</span>
-                <span>${wLimit > 0 ? `${currentWeekExp.toLocaleString()} / ${wLimit.toLocaleString()} ₪ (${wPct}%)` : 'Not set'}</span>
+                <span style="color:${wTruePct > 100 ? '#F87171' : '#fff'};">${wLimit > 0 ? `${currentWeekExp.toLocaleString()} / ${wLimit.toLocaleString()} ₪ (${wTruePct}%)` : 'Not set'}</span>
               </div>
               ${wLimit > 0 ? `
                 <div class="fin-bar-bg" style="height:8px; margin-top:5px;">
-                  <div class="fin-bar-fill" style="width:${wPct}%; background:${wColor};"></div>
+                  <div class="fin-bar-fill" style="width:${wBarPct}%; background:${wColor};"></div>
                 </div>
-                <div style="font-size:11px; color:#94A3B8; margin-top:4px;">
-                  ${wLimit >= currentWeekExp ? `Remaining this week: <b>${(wLimit - currentWeekExp).toLocaleString()} ₪</b>` : `⚠️ Over weekly limit by <b>${(currentWeekExp - wLimit).toLocaleString()} ₪</b>`}
-                </div>
+                ${wOver <= 0 ? `
+                  <div style="font-size:11px; color:#94A3B8; margin-top:4px;">
+                    ✅ Remaining this week: <b>${(wLimit - currentWeekExp).toLocaleString()} ₪</b>
+                  </div>
+                ` : `
+                  <div style="background:rgba(244,63,94,0.12); border:1px solid rgba(244,63,94,0.3); border-radius:8px; padding:8px; margin-top:6px; font-size:11px; line-height:1.4;">
+                    <div style="color:#FDA4AF; font-weight:700;">⚠️ Over weekly limit by ${wOver.toLocaleString()} ₪ (${wTruePct}%)</div>
+                    <div style="color:#FDE047; margin-top:3px;">💡 <b>Smart Recovery:</b> Save <b>${wOver.toLocaleString()} ₪</b> next week! Recommended next week budget: <b>${nextWeekTarget.toLocaleString()} ₪</b> (~${nextWeekDaily} ₪/day).</div>
+                  </div>
+                `}
               ` : ''}
             </div>
 
-            <!-- Monthly Limit Row -->
             <div>
               <div style="display:flex; justify-content:space-between; font-size:12px; font-weight:700;">
                 <span>📆 Monthly (${bounds.label}):</span>
-                <span>${mLimit > 0 ? `${totalExp.toLocaleString()} / ${mLimit.toLocaleString()} ₪ (${mPct}%)` : 'Not set'}</span>
+                <span style="color:${mTruePct > 100 ? '#F87171' : '#fff'};">${mLimit > 0 ? `${totalExp.toLocaleString()} / ${mLimit.toLocaleString()} ₪ (${mTruePct}%)` : 'Not set'}</span>
               </div>
               ${mLimit > 0 ? `
                 <div class="fin-bar-bg" style="height:8px; margin-top:5px;">
-                  <div class="fin-bar-fill" style="width:${mPct}%; background:${mColor};"></div>
+                  <div class="fin-bar-fill" style="width:${mBarPct}%; background:${mColor};"></div>
                 </div>
                 <div style="font-size:11px; color:#94A3B8; margin-top:4px;">
-                  ${mLimit >= totalExp ? `Safe daily spend: <b>${safePerDay.toLocaleString()} ₪/day</b> (${daysLeft}d left)` : `⚠️ Over monthly limit by <b>${(totalExp - mLimit).toLocaleString()} ₪</b>`}
+                  ${mLimit >= totalExp ? `✅ Safe daily spend: <b>${safePerDay.toLocaleString()} ₪/day</b> (${daysLeft}d left)` : `⚠️ Over monthly limit by <b>${(totalExp - mLimit).toLocaleString()} ₪ (${mTruePct}%)</b> — pause non-essential spending!`}
                 </div>
               ` : ''}
             </div>
@@ -1511,11 +1604,11 @@
             <div style="font-size:12px; color:#94A3B8; font-weight:700; margin-bottom:10px; text-transform:uppercase;">Activity by Person (This Period)</div>
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
               <span class="task-badge badge-nikolai">Nikolai</span>
-              <span style="font-size:13px; font-weight:700;">Spent: <span style="color:#F87171;">-${actorStats.Nikolai.exp.toLocaleString()} ₪</span>  |  Added: <span style="color:#34D399;">+${actorStats.Nikolai.inc.toLocaleString()} ₪</span></span>
+              <span style="font-size:13px; font-weight:700;">Spent: <span style="color:#F87171;">-${actorStats.Nikolai.exp.toLocaleString()} ₪</span> &nbsp;|&nbsp; Added: <span style="color:#34D399;">+${actorStats.Nikolai.inc.toLocaleString()} ₪</span></span>
             </div>
             <div style="display:flex; justify-content:space-between; align-items:center;">
               <span class="task-badge badge-polly">Polly</span>
-              <span style="font-size:13px; font-weight:700;">Spent: <span style="color:#F87171;">-${actorStats.Polly.exp.toLocaleString()} ₪</span>  |  Added: <span style="color:#34D399;">+${actorStats.Polly.inc.toLocaleString()} ₪</span></span>
+              <span style="font-size:13px; font-weight:700;">Spent: <span style="color:#F87171;">-${actorStats.Polly.exp.toLocaleString()} ₪</span> &nbsp;|&nbsp; Added: <span style="color:#34D399;">+${actorStats.Polly.inc.toLocaleString()} ₪</span></span>
             </div>
           </div>
           ` : ''}
@@ -1528,7 +1621,7 @@
         `;
       }
     }
-
+  
     /* --- UTILS --- */
     function copyLink(e, url, btn) {
       if (e && e.stopPropagation) e.stopPropagation();
