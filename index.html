@@ -135,6 +135,18 @@
     .fin-actor-btn.active-polly { background: rgba(219, 39, 119, 0.3); color: #F472B6; border-color: #EC4899; }
     .fin-bar-bg { width: 100%; height: 7px; background: rgba(255,255,255,0.08); border-radius: 4px; overflow: hidden; margin-top: 6px; }
     .fin-bar-fill { height: 100%; border-radius: 4px; }
+
+    /* Finance Charts & KPIs */
+    .fin-kpi-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px; }
+    .fin-kpi-box { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07); border-radius: 12px; padding: 10px 6px; text-align: center; }
+    .fin-kpi-lbl { font-size: 11px; color: #94A3B8; font-weight: 600; }
+    .fin-kpi-val { font-size: 14px; font-weight: 800; color: #F8FAFC; margin-top: 4px; }
+    .fin-chart-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 14px; margin-bottom: 14px; }
+    .fin-chart-bars { display: flex; align-items: flex-end; justify-content: space-between; height: 100px; gap: 8px; padding-top: 18px; border-bottom: 1px dashed rgba(255,255,255,0.15); }
+    .fin-bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; height: 100%; justify-content: flex-end; }
+    .fin-bar-v { width: 100%; max-width: 34px; background: linear-gradient(180deg, #F43F5E, #BE123C); border-radius: 6px 6px 0 0; min-height: 4px; transition: height 0.3s ease; }
+    .fin-bar-amt { font-size: 10px; color: #FDA4AF; font-weight: 700; margin-bottom: 4px; }
+    .fin-bar-lbl { font-size: 10px; color: #64748B; font-weight: 600; margin-top: 6px; text-align: center; }
   </style>
 </head>
 <body>
@@ -786,6 +798,7 @@
         container.appendChild(card);
       });
     }
+  
     /* --- MODULE: FINANCE (1MONEY) --- */
     let isFinShared = true;
     let finSubView = "categories";
@@ -842,12 +855,28 @@
     }
 
     function getFinState() {
+      const rec = getFinRecord();function defaultFinState() {
+      return {
+        cycleDay: 10,
+        budgetLimit: 0,
+        accounts: { Card: 0, Cash: 0, Other: 0 },
+        customCategories: [],
+        transactions: []
+      };
+    }
+
+    function getFinRecord() {
+      return allData.find(n => n.title === FIN_PREFIX && n.is_shared === isFinShared);
+    }
+
+    function getFinState() {
       const rec = getFinRecord();
       if (!rec) return defaultFinState();
       try {
         const parsed = JSON.parse(rec.content);
         return {
           cycleDay: parsed.cycleDay || 10,
+          budgetLimit: parsed.budgetLimit || 0,
           accounts: parsed.accounts || { Card: 0, Cash: 0, Other: 0 },
           customCategories: parsed.customCategories || [],
           transactions: parsed.transactions || []
@@ -1048,6 +1077,63 @@
       await saveFinState(state);
     }
 
+    async function transferBetweenAccounts() {
+      const fromAcc = prompt("Transfer FROM account (Card, Cash, Other):", "Card");
+      if (!fromAcc || !["Card", "Cash", "Other"].includes(fromAcc)) return;
+      const toAcc = prompt("Transfer TO account (Card, Cash, Other):", "Cash");
+      if (!toAcc || !["Card", "Cash", "Other"].includes(toAcc) || fromAcc === toAcc) return;
+      const amtStr = prompt(`Amount to transfer from ${fromAcc} to ${toAcc} (₪):`);
+      const amt = parseFloat(amtStr);
+      if (isNaN(amt) || amt <= 0) return;
+
+      const state = getFinState();
+      state.accounts[fromAcc] = (state.accounts[fromAcc] || 0) - amt;
+      state.accounts[toAcc] = (state.accounts[toAcc] || 0) + amt;
+      state.transactions.unshift({
+        id: Date.now(),
+        type: "transfer",
+        category: `⇄ ${fromAcc} → ${toAcc}`,
+        account: fromAcc,
+        amount: amt,
+        note: "Account transfer",
+        user: detectDefaultActor(),
+        date: new Date().toISOString()
+      });
+      await saveFinState(state);
+    }
+
+    async function setFinBudgetLimit() {
+      const state = getFinState();
+      const input = prompt("Set Monthly Expense Limit in ₪ (0 to disable):", state.budgetLimit || 0);
+      if (input === null) return;
+      const val = parseFloat(input);
+      state.budgetLimit = (isNaN(val) || val < 0) ? 0 : val;
+      await saveFinState(state);
+    }
+
+    function copyFinReport(btn) {
+      const state = getFinState();
+      const bounds = getFinPeriodBounds(state.cycleDay || 10);
+      const periodTxs = state.transactions.filter(t => {
+        const d = new Date(t.date);
+        return d >= bounds.start && d < bounds.end;
+      });
+      let exp = 0, inc = 0;
+      const cats = {};
+      periodTxs.forEach(t => {
+        if (t.type === "income") inc += t.amount;
+        else if (t.type === "expense") {
+          exp += t.amount;
+          cats[t.category] = (cats[t.category] || 0) + t.amount;
+        }
+      });
+      const totalBal = (state.accounts.Card || 0) + (state.accounts.Cash || 0) + (state.accounts.Other || 0);
+      const topCats = Object.entries(cats).sort((a,b) => b[1]-a[1]).slice(0, 5).map(([k,v]) => `• ${k}: ${v} ₪`).join("\n");
+
+      const reportText = `📊 Finance Report (${isFinShared ? 'Family Shared' : detectDefaultActor()})\n📅 Period: ${bounds.label}\n💰 Total Balance: ${totalBal} ₪\n📉 Expenses: -${exp} ₪\n📈 Income: +${inc} ₪\n${topCats ? '\nTop Categories:\n' + topCats : ''}`;
+      copyLink(new Event('click'), reportText, btn);
+    }
+
     async function addCustomFinCategory() {
       const name = prompt("New category name (e.g. Subscriptions):");
       if (!name || !name.trim()) return;
@@ -1067,14 +1153,15 @@
 
     function formatFinTxRow(t, allCats, allowDelete = true) {
       const isInc = t.type === "income";
+      const isTrf = t.type === "transfer";
       const catObj = allCats.find(c => c.name === t.category);
-      const icon = isInc ? "💰" : (catObj ? catObj.icon : "⚖️");
+      const icon = isTrf ? "⇄" : (isInc ? "💰" : (catObj ? catObj.icon : "⚖️"));
       const actor = t.user || "Nikolai";
       const badgeClass = (actor === "Polly") ? "badge-polly" : "badge-nikolai";
       const d = new Date(t.date);
       const dateStr = `${d.getDate()}/${d.getMonth() + 1} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-      const sign = isInc ? "+" : "-";
-      const color = isInc ? "#34D399" : "#F87171";
+      const sign = isTrf ? "" : (isInc ? "+" : "-");
+      const color = isTrf ? "#60A5FA" : (isInc ? "#34D399" : "#F87171");
 
       return `
         <div class="fin-tx-card">
@@ -1082,7 +1169,7 @@
             <div style="font-size:22px; flex-shrink:0;">${icon}</div>
             <div style="min-width:0; flex:1;">
               <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
-                <span class="task-badge ${badgeClass}">${escapeHtml(actor)}</span>
+                ${isFinShared ? `<span class="task-badge ${badgeClass}">${escapeHtml(actor)}</span>` : ''}
                 <span style="font-weight:700; font-size:14px; color:#fff;">${escapeHtml(t.category)}</span>
               </div>
               <div style="font-size:12px; color:#94A3B8; margin-top:3px; word-break:break-word;">
@@ -1122,17 +1209,30 @@
         Polly: { exp: 0, inc: 0 }
       };
 
+      const now = new Date();
+      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const weekAgo = new Date(todayStart.getTime() - 6 * 86400000);
+      let todayExp = 0;
+      let weekExp = 0;
+
       periodTxs.forEach(t => {
         const actor = (t.user === "Polly") ? "Polly" : "Nikolai";
+        const d = new Date(t.date);
         if (t.type === "income") {
           totalInc += t.amount;
           actorStats[actor].inc += t.amount;
-        } else {
+        } else if (t.type === "expense") {
           totalExp += t.amount;
           catSums[t.category] = (catSums[t.category] || 0) + t.amount;
           actorStats[actor].exp += t.amount;
+          if (d >= todayStart) todayExp += t.amount;
+          if (d >= weekAgo) weekExp += t.amount;
         }
       });
+
+      const elapsedMs = Math.max(86400000, Math.min(now.getTime(), bounds.end.getTime()) - bounds.start.getTime());
+      const elapsedDays = Math.max(1, Math.ceil(elapsedMs / 86400000));
+      const avgDayExp = Math.round(totalExp / elapsedDays);
 
       const allCats = [...DEFAULT_FIN_CATEGORIES, ...(state.customCategories || [])];
 
@@ -1190,7 +1290,6 @@
       `;
       container.appendChild(addBtn);
 
-      /* Mini recent feed right below the wheel so you immediately see who added what */
       const recentMini = document.getElementById("fin-recent-mini");
       if (recentMini) {
         if (periodTxs.length === 0) {
@@ -1203,7 +1302,7 @@
         }
       }
 
-      /* 3. Render Accounts List */
+      /* 3. Render Accounts List + Transfer Button */
       const accList = document.getElementById("fin-accounts-list");
       if (accList) {
         const accMeta = [
@@ -1217,15 +1316,17 @@
               <div class="fin-acc-icon" style="background:${a.bg};">${a.icon}</div>
               <div>
                 <div class="fin-acc-title">${a.key}</div>
-                <div style="font-size:11px; color:#94A3B8;">Tap to adjust balance (logged by name)</div>
+                <div style="font-size:11px; color:#94A3B8;">Tap to set exact balance</div>
               </div>
             </div>
             <div class="fin-acc-bal">${(state.accounts[a.key] || 0).toLocaleString()} ₪</div>
           </div>
-        `).join('');
+        `).join('') + `
+          <button class="wish-submit" style="background:#334155; margin-top:6px;" onclick="transferBetweenAccounts()">⇄ Transfer Between Accounts</button>
+        `;
       }
 
-      /* 4. Render Full Transactions Feed (Who did what) */
+      /* 4. Render Full Transactions Feed */
       const txList = document.getElementById("fin-tx-list");
       if (txList) {
         if (periodTxs.length === 0) {
@@ -1235,9 +1336,43 @@
         }
       }
 
-      /* 5. Render Overview (Analytics + Nikolai vs Polly Breakdown) */
+      /* 5. Render Overview (1Money Trend Chart, KPIs, Budget Limit & Breakdown) */
       const ovBox = document.getElementById("fin-overview-box");
       if (ovBox) {
+        /* Build 5-segment Period Trend Bars */
+        const spanMs = Math.max(1, bounds.end.getTime() - bounds.start.getTime());
+        const segMs = spanMs / 5;
+        const buckets = [0, 0, 0, 0, 0];
+        const bucketLabels = [];
+        for (let i = 0; i < 5; i++) {
+          const sDate = new Date(bounds.start.getTime() + i * segMs);
+          bucketLabels.push(`${sDate.getDate()}/${sDate.getMonth() + 1}`);
+        }
+        periodTxs.forEach(t => {
+          if (t.type === "expense") {
+            const idx = Math.min(4, Math.max(0, Math.floor((new Date(t.date).getTime() - bounds.start.getTime()) / segMs)));
+            buckets[idx] += t.amount;
+          }
+        });
+        const maxBucket = Math.max(...buckets, 1);
+        const barsHtml = buckets.map((val, i) => {
+          const hPct = Math.max(5, Math.round((val / maxBucket) * 100));
+          return `
+            <div class="fin-bar-col">
+              <div class="fin-bar-amt">${val > 0 ? val.toLocaleString() : ''}</div>
+              <div class="fin-bar-v" style="height:${hPct}%; opacity:${val > 0 ? 1 : 0.2};"></div>
+              <div class="fin-bar-lbl">${bucketLabels[i]}</div>
+            </div>
+          `;
+        }).join('');
+
+        /* Budget Progress Calculation */
+        const limit = state.budgetLimit || 0;
+        const limitPct = limit > 0 ? Math.min(100, Math.round((totalExp / limit) * 100)) : 0;
+        const limitColor = limitPct >= 90 ? "#F43F5E" : (limitPct >= 75 ? "#F59E0B" : "#10B981");
+        const daysLeft = Math.max(1, Math.ceil((bounds.end.getTime() - now.getTime()) / 86400000));
+        const safePerDay = (limit > totalExp) ? Math.round((limit - totalExp) / daysLeft) : 0;
+
         const sortedCats = allCats
           .map(c => ({ ...c, spent: catSums[c.name] || 0 }))
           .filter(c => c.spent > 0)
@@ -1259,11 +1394,11 @@
         }).join('');
 
         if (!catsHtml) {
-          catsHtml = `<div style="text-align:center; padding: 24px; color: #64748B;">No expenses recorded yet</div>`;
+          catsHtml = `<div style="text-align:center; padding: 20px; color: #64748B;">No expenses recorded yet</div>`;
         }
 
         ovBox.innerHTML = `
-          <div style="display:flex; gap:10px; margin-bottom:14px;">
+          <div style="display:flex; gap:10px; margin-bottom:12px;">
             <div style="flex:1; background:rgba(244,63,94,0.15); border:1px solid rgba(244,63,94,0.3); border-radius:14px; padding:12px; text-align:center;">
               <div style="font-size:11px; color:#FDA4AF; font-weight:700;">EXPENSES</div>
               <div style="font-size:18px; font-weight:800; color:#F43F5E; margin-top:4px;">-${totalExp.toLocaleString()} ₪</div>
@@ -1272,6 +1407,47 @@
               <div style="font-size:11px; color:#6EE7B7; font-weight:700;">INCOME</div>
               <div style="font-size:18px; font-weight:800; color:#10B981; margin-top:4px;">+${totalInc.toLocaleString()} ₪</div>
             </div>
+          </div>
+
+          <!-- 1Money Style KPI Boxes: Day (avg) / Today / 7 Days -->
+          <div class="fin-kpi-row">
+            <div class="fin-kpi-box">
+              <div class="fin-kpi-lbl">Day (avg.)</div>
+              <div class="fin-kpi-val">${avgDayExp.toLocaleString()} ₪</div>
+            </div>
+            <div class="fin-kpi-box">
+              <div class="fin-kpi-lbl">Today</div>
+              <div class="fin-kpi-val">${todayExp.toLocaleString()} ₪</div>
+            </div>
+            <div class="fin-kpi-box">
+              <div class="fin-kpi-lbl">Last 7 Days</div>
+              <div class="fin-kpi-val">${weekExp.toLocaleString()} ₪</div>
+            </div>
+          </div>
+
+          <!-- Spending Trend Bar Chart -->
+          <div class="fin-chart-card">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+              <span style="font-size:11px; color:#94A3B8; font-weight:700; text-transform:uppercase;">Spending Dynamics</span>
+              <span style="font-size:11px; color:#64748B;">Net: ${(totalInc - totalExp).toLocaleString()} ₪</span>
+            </div>
+            <div class="fin-chart-bars">${barsHtml}</div>
+          </div>
+
+          <!-- Monthly Budget Limit & Safe Daily Spend -->
+          <div class="fin-top-card" style="text-align:left; margin-bottom:14px; cursor:pointer;" onclick="setFinBudgetLimit()">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <span style="font-size:12px; color:#94A3B8; font-weight:700; text-transform:uppercase;">🎯 Monthly Budget Limit</span>
+              <span style="font-size:12px; color:#60A5FA; font-weight:700;">${limit > 0 ? `${totalExp.toLocaleString()} / ${limit.toLocaleString()} ₪ (${limitPct}%)` : 'Tap to set limit ✎'}</span>
+            </div>
+            ${limit > 0 ? `
+              <div class="fin-bar-bg" style="height:9px; margin-top:8px;">
+                <div class="fin-bar-fill" style="width:${limitPct}%; background:${limitColor};"></div>
+              </div>
+              <div style="font-size:11px; color:#94A3B8; margin-top:6px;">
+                ${limit > totalExp ? `✅ Safe daily spend: <b>${safePerDay.toLocaleString()} ₪/day</b> (${daysLeft} days left)` : `⚠️ Budget exceeded by <b>${(totalExp - limit).toLocaleString()} ₪</b>`}
+              </div>
+            ` : ''}
           </div>
 
           ${isFinShared ? `
@@ -1288,7 +1464,10 @@
           </div>
           ` : ''}
 
-          <div style="font-size:12px; color:#94A3B8; font-weight:700; margin-bottom:8px; text-transform:uppercase;">Category Breakdown</div>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+            <span style="font-size:12px; color:#94A3B8; font-weight:700; text-transform:uppercase;">Category Breakdown</span>
+            <button class="link-btn" style="padding:4px 10px;" onclick="copyFinReport(this)">📋 Copy Report</button>
+          </div>
           ${catsHtml}
         `;
       }
