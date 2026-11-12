@@ -1274,6 +1274,7 @@
             </div>
           </div>
 
+          ${isFinShared ? `
           <div class="fin-top-card" style="text-align:left; margin-bottom:14px;">
             <div style="font-size:12px; color:#94A3B8; font-weight:700; margin-bottom:10px; text-transform:uppercase;">Activity by Person (This Period)</div>
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
@@ -1285,6 +1286,7 @@
               <span style="font-size:13px; font-weight:700;">Spent: <span style="color:#F87171;">-${actorStats.Polly.exp.toLocaleString()} ₪</span>  |  Added: <span style="color:#34D399;">+${actorStats.Polly.inc.toLocaleString()} ₪</span></span>
             </div>
           </div>
+          ` : ''}
 
           <div style="font-size:12px; color:#94A3B8; font-weight:700; margin-bottom:8px; text-transform:uppercase;">Category Breakdown</div>
           ${catsHtml}
