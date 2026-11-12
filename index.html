@@ -232,6 +232,7 @@
     </div>
     <div id="wishlist-container"></div>
   </div>
+
   <!-- 5. TO ORDER SCREEN -->
   <div id="screen-order" class="screen">
     <div class="nav-header">
@@ -252,6 +253,7 @@
     </div>
     <div id="order-container"></div>
   </div>
+
   <!-- 6. TASKS SCREEN -->
   <div id="screen-tasks" class="screen">
     <div class="nav-header">
@@ -272,6 +274,108 @@
     <div id="tasks-container"></div>
   </div>
 
+  <!-- 7. FINANCE SCREEN (1MONEY) -->
+  <div id="screen-finance" class="screen">
+    <div class="nav-header">
+      <button class="back-btn" onclick="openScreen('screen-dashboard')">←</button>
+      <h2>Finance</h2>
+    </div>
+
+    <!-- Shared (Main) vs Personal Tabs -->
+    <div class="tabs">
+      <button class="tab-btn active" id="tab-fin-shared" onclick="setFinScope(true)">Shared (Family)</button>
+      <button class="tab-btn" id="tab-fin-personal" onclick="setFinScope(false)">Personal</button>
+    </div>
+
+    <!-- Top Balance & Period Header -->
+    <div class="fin-top-card">
+      <div class="fin-acc-label" id="fin-scope-label">All Family Accounts</div>
+      <div class="fin-total-val" id="fin-total-balance">0 ₪</div>
+      <div class="fin-period-bar">
+        <button class="fin-nav-arrow" onclick="shiftFinPeriod(-1)">«</button>
+        <div class="fin-period-pill" onclick="toggleFinPeriodModal()">
+          <span id="fin-period-text">10 NOV – 9 DEC</span> <span>▼</span>
+        </div>
+        <button class="fin-nav-arrow" onclick="shiftFinPeriod(1)">»</button>
+      </div>
+    </div>
+
+    <!-- Period & Cycle Day Settings Modal -->
+    <div id="fin-period-modal" class="fin-modal">
+      <div class="assign-title">Period Mode & Billing Cycle Start Day</div>
+      <div class="assign-btns" style="margin-bottom: 10px;">
+        <button class="assign-btn" style="background:#334155;" onclick="setFinPeriodMode('month')">Month</button>
+        <button class="assign-btn" style="background:#334155;" onclick="setFinPeriodMode('week')">Week</button>
+        <button class="assign-btn" style="background:#334155;" onclick="setFinPeriodMode('today')">Today</button>
+        <button class="assign-btn" style="background:#334155;" onclick="setFinPeriodMode('all')">All</button>
+      </div>
+      <div style="display:flex; gap:8px; align-items:center;">
+        <span style="font-size:12px; color:#94A3B8; flex:1;">Salary / Start day of month (1-28):</span>
+        <input type="number" id="fin-cycle-day-input" min="1" max="28" value="10" style="width:65px; padding:8px; border-radius:8px; border:1px solid rgba(255,255,255,0.2); background:#0B1120; color:#fff; text-align:center;">
+        <button class="add-btn" style="background:#2563EB; padding:8px 12px;" onclick="saveFinCycleDay()">Save</button>
+      </div>
+    </div>
+
+    <!-- Quick Add Expense / Income Modal with Actor Tracking -->
+    <div id="fin-tx-modal" class="fin-modal">
+      <div class="assign-title" id="fin-tx-modal-title">Add Transaction</div>
+      <div class="fin-actor-pick">
+        <button class="fin-actor-btn" id="fin-actor-nikolai" onclick="setFinActor('Nikolai')">👤 By: Nikolai</button>
+        <button class="fin-actor-btn" id="fin-actor-polly" onclick="setFinActor('Polly')">👤 By: Polly</button>
+      </div>
+      <input type="number" id="fin-tx-amount" class="wish-input" placeholder="Amount in ₪ (e.g. 120)">
+      <div class="wish-row">
+        <select id="fin-tx-account" class="wish-input" style="flex:1; margin-bottom:0; background:#1E293B;">
+          <option value="Card">💳 Card</option>
+          <option value="Cash">💵 Cash</option>
+          <option value="Other">🏦 Other</option>
+        </select>
+        <input type="text" id="fin-tx-note" class="wish-input" style="flex:1.2; margin-bottom:0;" placeholder="Comment (optional)">
+      </div>
+      <div class="assign-btns" style="margin-top:8px;">
+        <button class="assign-btn" style="background:#475569;" onclick="closeFinTxModal()">Cancel</button>
+        <button class="assign-btn" id="fin-tx-submit-btn" style="background:#2563EB;" onclick="submitFinTx()">Save</button>
+      </div>
+    </div>
+
+    <!-- Sub-view 1: Accounts -->
+    <div id="fin-view-accounts" style="display:none; margin-bottom:80px;">
+      <div id="fin-accounts-list"></div>
+    </div>
+
+    <!-- Sub-view 2: Categories (1Money Wheel + Recent Activity Preview) -->
+    <div id="fin-view-categories" style="margin-bottom:80px;">
+      <div class="fin-wheel-grid" id="fin-wheel-container"></div>
+      <div id="fin-recent-mini"></div>
+    </div>
+
+    <!-- Sub-view 3: Transactions (Full Who-Did-What Feed) -->
+    <div id="fin-view-transactions" style="display:none; margin-bottom:80px;">
+      <div id="fin-tx-list"></div>
+    </div>
+
+    <!-- Sub-view 4: Overview (Analytics & Who Spent/Added What) -->
+    <div id="fin-view-overview" style="display:none; margin-bottom:80px;">
+      <div id="fin-overview-box"></div>
+    </div>
+
+    <!-- 1Money Bottom Navigation -->
+    <div class="fin-bottom-nav">
+      <button class="fin-nav-item" id="fin-nav-accounts" onclick="setFinSubView('accounts')">
+        <span class="fin-nav-icon">👛</span><span>Accounts</span>
+      </button>
+      <button class="fin-nav-item active" id="fin-nav-categories" onclick="setFinSubView('categories')">
+        <span class="fin-nav-icon">🍩</span><span>Categories</span>
+      </button>
+      <button class="fin-nav-item" id="fin-nav-transactions" onclick="setFinSubView('transactions')">
+        <span class="fin-nav-icon">🧾</span><span>Transactions</span>
+      </button>
+      <button class="fin-nav-item" id="fin-nav-overview" onclick="setFinSubView('overview')">
+        <span class="fin-nav-icon">📊</span><span>Overview</span>
+      </button>
+    </div>
+  </div>
+
   <!-- =========================================
        MODULE: JAVASCRIPT LOGIC
        ========================================= -->
@@ -283,6 +387,7 @@
     const WISH_POLLY_PREFIX = "[WISH_P]";
     const TASK_NIKOLAI_PREFIX = "[TASK_N]";
     const TASK_POLLY_PREFIX = "[TASK_P]";
+    const FIN_PREFIX = "[FIN]";
 
     const tg = window.Telegram.WebApp;
     tg.ready();
@@ -302,7 +407,7 @@
       document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
       document.getElementById(screenId).classList.add('active');
       if (screenId === 'screen-dev') document.getElementById('dev-title').textContent = devTitle;
-      if (screenId === 'screen-notes' || screenId === 'screen-wishlist' || screenId === 'screen-order' || screenId === 'screen-tasks') fetchAllData();
+      if (screenId === 'screen-notes' || screenId === 'screen-wishlist' || screenId === 'screen-order' || screenId === 'screen-tasks' || screenId === 'screen-finance') fetchAllData();
     }
 
     async function fetchAllData() {
@@ -317,6 +422,7 @@
         renderWishes();
         renderOrders();
         renderTasks();
+        renderFinance();
       } catch (err) { 
         alert("System Error: " + err.message + "\nCheck backend and Ngrok.");
       }
@@ -370,8 +476,7 @@
       if (!container) return;
       container.innerHTML = "";
       
-      const notes = allData.filter(n => n.is_shared === isNotesShared && !n.title.startsWith(WISH_PREFIX) && !n.title.startsWith(WISH_POLLY_PREFIX) && !n.title.startsWith(ORDER_PREFIX) && !n.title.startsWith(TASK_NIKOLAI_PREFIX) && !n.title.startsWith(TASK_POLLY_PREFIX));
-      
+    const notes = allData.filter(n => n.is_shared === isNotesShared && !n.title.startsWith(WISH_PREFIX) && !n.title.startsWith(WISH_POLLY_PREFIX) && !n.title.startsWith(ORDER_PREFIX) && !n.title.startsWith(TASK_NIKOLAI_PREFIX) && !n.title.startsWith(TASK_POLLY_PREFIX) && !n.title.startsWith(FIN_PREFIX));      
       if (notes.length === 0) {
         container.innerHTML = `<div style="text-align:center; padding: 40px; color: #64748B;">List is empty</div>`;
         return;
