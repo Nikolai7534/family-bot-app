@@ -786,6 +786,507 @@
         container.appendChild(card);
       });
     }
+    /* --- MODULE: FINANCE (1MONEY) --- */
+    let isFinShared = true;
+    let finSubView = "categories";
+    let finPeriodMode = "month";
+    let finMonthOffset = 0;
+    let activeFinTxType = "expense";
+    let activeFinCategory = "";
+    let activeFinActor = (Number(currentUserId) === 191692918) ? "Polly" : "Nikolai";
+
+    const DEFAULT_FIN_CATEGORIES = [
+      { id: "home", name: "Home", icon: "🏠", color: "#3B82F6" },
+      { id: "food", name: "Food Out", icon: "🍔", color: "#6366F1" },
+      { id: "transport", name: "Transport", icon: "🚌", color: "#F59E0B" },
+      { id: "smoking", name: "Smoking", icon: "🚬", color: "#84CC16" },
+      { id: "leisure", name: "Leisure", icon: "⛺", color: "#14B8A6" },
+      { id: "shopping", name: "Shopping", icon: "🛍️", color: "#EC4899" },
+      { id: "groceries", name: "Groceries", icon: "🛒", color: "#64748B" },
+      { id: "drinks", name: "Coffee", icon: "☕", color: "#EA580C" },
+      { id: "car", name: "Car", icon: "🚗", color: "#10B981" },
+      { id: "alcohol", name: "Alcohol", icon: "🍷", color: "#E11D48" },
+      { id: "gifts", name: "Gifts", icon: "🎁", color: "#8B5CF6" },
+      { id: "vet", name: "Vet & Pets", icon: "🐾", color: "#06B6D4" },
+      { id: "bills", name: "Bills", icon: "💡", color: "#EAB308" },
+      { id: "health", name: "Health", icon: "💊", color: "#F43F5E" }
+    ];
+
+    function detectDefaultActor() {
+      if (Number(currentUserId) === 191692918) return "Polly";
+      if (Number(currentUserId) === 547418372) return "Nikolai";
+      return userName || "Nikolai";
+    }
+
+    function setFinActor(actorName) {
+      activeFinActor = actorName;
+      const btnN = document.getElementById("fin-actor-nikolai");
+      const btnP = document.getElementById("fin-actor-polly");
+      if (btnN && btnP) {
+        btnN.className = "fin-actor-btn" + (actorName === "Nikolai" ? " active-nikolai" : "");
+        btnP.className = "fin-actor-btn" + (actorName === "Polly" ? " active-polly" : "");
+      }
+    }
+
+    function defaultFinState() {
+      return {
+        cycleDay: 10,
+        accounts: { Card: 0, Cash: 0, Other: 0 },
+        customCategories: [],
+        transactions: []
+      };
+    }
+
+    function getFinRecord() {
+      return allData.find(n => n.title === FIN_PREFIX && n.is_shared === isFinShared);
+    }
+
+    function getFinState() {
+      const rec = getFinRecord();
+      if (!rec) return defaultFinState();
+      try {
+        const parsed = JSON.parse(rec.content);
+        return {
+          cycleDay: parsed.cycleDay || 10,
+          accounts: parsed.accounts || { Card: 0, Cash: 0, Other: 0 },
+          customCategories: parsed.customCategories || [],
+          transactions: parsed.transactions || []
+        };
+      } catch (e) {
+        return defaultFinState();
+      }
+    }
+
+    async function saveFinState(stateObj) {
+      const rec = getFinRecord();
+      const contentStr = JSON.stringify(stateObj);
+      try {
+        if (rec) {
+          rec.content = contentStr;
+          renderFinance();
+          await fetch(`${API_BASE}/api/notes/${rec.id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json", "x-user-id": String(currentUserId), "ngrok-skip-browser-warning": "true" },
+            body: JSON.stringify({ content: contentStr })
+          });
+        } else {
+          await fetch(`${API_BASE}/api/notes`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "x-user-id": String(currentUserId), "ngrok-skip-browser-warning": "true" },
+            body: JSON.stringify({ title: FIN_PREFIX, is_shared: isFinShared, content: contentStr })
+          });
+          fetchAllData();
+        }
+      } catch (e) {}
+    }
+
+    function setFinScope(shared) {
+      isFinShared = shared;
+      finMonthOffset = 0;
+      document.getElementById("tab-fin-shared").classList.toggle("active", shared);
+      document.getElementById("tab-fin-personal").classList.toggle("active", !shared);
+      document.getElementById("fin-scope-label").textContent = shared ? "All Family Accounts" : `${detectDefaultActor()}'s Personal Accounts`;
+      renderFinance();
+    }
+
+    function setFinSubView(view) {
+      finSubView = view;
+      ["accounts", "categories", "transactions", "overview"].forEach(v => {
+        document.getElementById(`fin-view-${v}`).style.display = (v === view) ? "block" : "none";
+        document.getElementById(`fin-nav-${v}`).classList.toggle("active", v === view);
+      });
+      renderFinance();
+    }
+
+    function toggleFinPeriodModal() {
+      const modal = document.getElementById("fin-period-modal");
+      const state = getFinState();
+      document.getElementById("fin-cycle-day-input").value = state.cycleDay || 10;
+      modal.style.display = (modal.style.display === "block") ? "none" : "block";
+    }
+
+    function setFinPeriodMode(mode) {
+      finPeriodMode = mode;
+      finMonthOffset = 0;
+      document.getElementById("fin-period-modal").style.display = "none";
+      renderFinance();
+    }
+
+    async function saveFinCycleDay() {
+      let day = parseInt(document.getElementById("fin-cycle-day-input").value, 10);
+      if (isNaN(day) || day < 1) day = 1;
+      if (day > 28) day = 28;
+      const state = getFinState();
+      state.cycleDay = day;
+      document.getElementById("fin-period-modal").style.display = "none";
+      await saveFinState(state);
+    }
+
+    function shiftFinPeriod(dir) {
+      finMonthOffset += dir;
+      renderFinance();
+    }
+
+    function getFinPeriodBounds(cycleDay) {
+      const now = new Date();
+      const months = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+
+      if (finPeriodMode === "all") {
+        return { start: new Date(2000, 0, 1), end: new Date(2100, 0, 1), label: "ALL TIME" };
+      }
+      if (finPeriodMode === "today") {
+        const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + finMonthOffset);
+        const nextD = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1);
+        return { start: d, end: nextD, label: `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}` };
+      }
+      if (finPeriodMode === "week") {
+        const base = new Date(now.getFullYear(), now.getMonth(), now.getDate() + (finMonthOffset * 7));
+        const start = new Date(base.getFullYear(), base.getMonth(), base.getDate() - base.getDay());
+        const end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 7);
+        const endDisp = new Date(end.getTime() - 86400000);
+        return { start, end, label: `${start.getDate()} ${months[start.getMonth()]} – ${endDisp.getDate()} ${months[endDisp.getMonth()]}` };
+      }
+
+      let year = now.getFullYear();
+      let month = now.getMonth();
+      if (now.getDate() < cycleDay) month -= 1;
+      month += finMonthOffset;
+
+      const start = new Date(year, month, cycleDay, 0, 0, 0);
+      const end = new Date(start.getFullYear(), start.getMonth() + 1, cycleDay, 0, 0, 0);
+      const endDisp = new Date(end.getTime() - 86400000);
+
+      const label = `${start.getDate()} ${months[start.getMonth()]} – ${endDisp.getDate()} ${months[endDisp.getMonth()]} ${endDisp.getFullYear()}`;
+      return { start, end, label };
+    }
+
+    function openFinTxModal(type, categoryName) {
+      activeFinTxType = type;
+      activeFinCategory = categoryName;
+      setFinActor(detectDefaultActor());
+      document.getElementById("fin-tx-modal-title").textContent = type === "income" ? "➕ Add Income" : `💸 Expense: ${categoryName}`;
+      document.getElementById("fin-tx-submit-btn").style.background = type === "income" ? "#10B981" : "#2563EB";
+      document.getElementById("fin-tx-amount").value = "";
+      document.getElementById("fin-tx-note").value = "";
+      document.getElementById("fin-tx-modal").style.display = "block";
+      document.getElementById("fin-tx-amount").focus();
+    }
+
+    function closeFinTxModal() {
+      document.getElementById("fin-tx-modal").style.display = "none";
+    }
+
+    async function submitFinTx() {
+      const amount = parseFloat(document.getElementById("fin-tx-amount").value);
+      if (isNaN(amount) || amount <= 0) return;
+      const account = document.getElementById("fin-tx-account").value;
+      const note = document.getElementById("fin-tx-note").value.trim();
+
+      const state = getFinState();
+      if (activeFinTxType === "income") {
+        state.accounts[account] = (state.accounts[account] || 0) + amount;
+      } else {
+        state.accounts[account] = (state.accounts[account] || 0) - amount;
+      }
+
+      state.transactions.unshift({
+        id: Date.now(),
+        type: activeFinTxType,
+        category: activeFinCategory,
+        account: account,
+        amount: amount,
+        note: note,
+        user: activeFinActor,
+        date: new Date().toISOString()
+      });
+
+      closeFinTxModal();
+      await saveFinState(state);
+    }
+
+    async function deleteFinTx(txId) {
+      if (!confirm("Delete this transaction and restore account balance?")) return;
+      const state = getFinState();
+      const idx = state.transactions.findIndex(t => t.id === txId);
+      if (idx === -1) return;
+      const tx = state.transactions[idx];
+      if (tx.type === "income") {
+        state.accounts[tx.account] = (state.accounts[tx.account] || 0) - tx.amount;
+      } else if (tx.type === "expense") {
+        state.accounts[tx.account] = (state.accounts[tx.account] || 0) + tx.amount;
+      }
+      state.transactions.splice(idx, 1);
+      await saveFinState(state);
+    }
+
+    async function editFinAccount(accName) {
+      const state = getFinState();
+      const currentVal = state.accounts[accName] || 0;
+      const actor = detectDefaultActor();
+      const input = prompt(`[${actor}] Set balance for ${accName} (₪):`, currentVal);
+      if (input === null) return;
+      const val = parseFloat(input);
+      if (isNaN(val)) return;
+      const diff = val - currentVal;
+      state.accounts[accName] = val;
+      if (diff !== 0) {
+        state.transactions.unshift({
+          id: Date.now(),
+          type: diff > 0 ? "income" : "expense",
+          category: "Balance Adjust",
+          account: accName,
+          amount: Math.abs(diff),
+          note: `Manual balance set to ${val} ₪`,
+          user: actor,
+          date: new Date().toISOString()
+        });
+      }
+      await saveFinState(state);
+    }
+
+    async function addCustomFinCategory() {
+      const name = prompt("New category name (e.g. Subscriptions):");
+      if (!name || !name.trim()) return;
+      const icon = prompt("Choose an emoji icon (e.g. 🎮, 🐶, ✈️):", "✨") || "✨";
+      const colors = ["#3B82F6", "#10B981", "#F59E0B", "#EC4899", "#8B5CF6", "#06B6D4"];
+      const color = colors[Math.floor(Math.random() * colors.length)];
+
+      const state = getFinState();
+      state.customCategories.push({
+        id: "cust_" + Date.now(),
+        name: name.trim(),
+        icon: icon.trim(),
+        color: color
+      });
+      await saveFinState(state);
+    }
+
+    function formatFinTxRow(t, allCats, allowDelete = true) {
+      const isInc = t.type === "income";
+      const catObj = allCats.find(c => c.name === t.category);
+      const icon = isInc ? "💰" : (catObj ? catObj.icon : "⚖️");
+      const actor = t.user || "Nikolai";
+      const badgeClass = (actor === "Polly") ? "badge-polly" : "badge-nikolai";
+      const d = new Date(t.date);
+      const dateStr = `${d.getDate()}/${d.getMonth() + 1} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+      const sign = isInc ? "+" : "-";
+      const color = isInc ? "#34D399" : "#F87171";
+
+      return `
+        <div class="fin-tx-card">
+          <div style="display:flex; align-items:center; gap:10px; min-width:0; flex:1;">
+            <div style="font-size:22px; flex-shrink:0;">${icon}</div>
+            <div style="min-width:0; flex:1;">
+              <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                <span class="task-badge ${badgeClass}">${escapeHtml(actor)}</span>
+                <span style="font-weight:700; font-size:14px; color:#fff;">${escapeHtml(t.category)}</span>
+              </div>
+              <div style="font-size:12px; color:#94A3B8; margin-top:3px; word-break:break-word;">
+                ${escapeHtml(t.account)} • ${dateStr} ${t.note ? '• ' + escapeHtml(t.note) : ''}
+              </div>
+            </div>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
+            <span style="font-weight:800; font-size:15px; color:${color};">${sign}${t.amount.toLocaleString()} ₪</span>
+            ${allowDelete ? `<button class="del-btn" onclick="deleteFinTx(${t.id})">✕</button>` : ''}
+          </div>
+        </div>
+      `;
+    }
+
+    function renderFinance() {
+      const container = document.getElementById("fin-wheel-container");
+      if (!container) return;
+
+      const state = getFinState();
+      const totalBal = (state.accounts.Card || 0) + (state.accounts.Cash || 0) + (state.accounts.Other || 0);
+      document.getElementById("fin-total-balance").textContent = `${totalBal.toLocaleString()} ₪`;
+
+      const bounds = getFinPeriodBounds(state.cycleDay || 10);
+      document.getElementById("fin-period-text").textContent = bounds.label;
+
+      const periodTxs = state.transactions.filter(t => {
+        const d = new Date(t.date);
+        return d >= bounds.start && d < bounds.end;
+      });
+
+      let totalExp = 0;
+      let totalInc = 0;
+      const catSums = {};
+      const actorStats = {
+        Nikolai: { exp: 0, inc: 0 },
+        Polly: { exp: 0, inc: 0 }
+      };
+
+      periodTxs.forEach(t => {
+        const actor = (t.user === "Polly") ? "Polly" : "Nikolai";
+        if (t.type === "income") {
+          totalInc += t.amount;
+          actorStats[actor].inc += t.amount;
+        } else {
+          totalExp += t.amount;
+          catSums[t.category] = (catSums[t.category] || 0) + t.amount;
+          actorStats[actor].exp += t.amount;
+        }
+      });
+
+      const allCats = [...DEFAULT_FIN_CATEGORIES, ...(state.customCategories || [])];
+
+      /* 1. Build Conic Gradient for Donut */
+      let gradientStr = "#334155 0deg 360deg";
+      if (totalExp > 0) {
+        let currentDeg = 0;
+        const stops = [];
+        allCats.forEach(c => {
+          const val = catSums[c.name] || 0;
+          if (val > 0) {
+            const slice = (val / totalExp) * 360;
+            stops.push(`${c.color} ${currentDeg.toFixed(1)}deg ${(currentDeg + slice).toFixed(1)}deg`);
+            currentDeg += slice;
+          }
+        });
+        if (stops.length > 0) gradientStr = stops.join(", ");
+      }
+
+      /* 2. Render Categories Wheel */
+      container.innerHTML = "";
+      const donutCell = document.createElement("div");
+      donutCell.className = "fin-donut-cell";
+      donutCell.innerHTML = `
+        <div class="fin-donut" style="background: conic-gradient(${gradientStr});">
+          <div class="fin-donut-inner">
+            <div class="fin-donut-label">Expenses</div>
+            <div class="fin-donut-exp">${totalExp.toLocaleString()} ₪</div>
+            <div class="fin-donut-inc" onclick="openFinTxModal('income', 'Income')">+ ${totalInc.toLocaleString()} ₪</div>
+          </div>
+        </div>
+      `;
+      container.appendChild(donutCell);
+
+      allCats.forEach(c => {
+        const sum = catSums[c.name] || 0;
+        const item = document.createElement("div");
+        item.className = "fin-cat-item";
+        item.onclick = () => openFinTxModal("expense", c.name);
+        item.innerHTML = `
+          <div class="fin-cat-name">${escapeHtml(c.name)}</div>
+          <div class="fin-cat-circle" style="background:${c.color}22; border-color:${c.color};">${c.icon}</div>
+          <div class="fin-cat-val ${sum > 0 ? 'spent' : ''}">${sum.toLocaleString()} ₪</div>
+        `;
+        container.appendChild(item);
+      });
+
+      const addBtn = document.createElement("div");
+      addBtn.className = "fin-cat-item";
+      addBtn.onclick = addCustomFinCategory;
+      addBtn.innerHTML = `
+        <div class="fin-cat-name">Add New</div>
+        <div class="fin-cat-circle" style="background:rgba(255,255,255,0.05); border:1px dashed #64748B;">➕</div>
+        <div class="fin-cat-val">Custom</div>
+      `;
+      container.appendChild(addBtn);
+
+      /* Mini recent feed right below the wheel so you immediately see who added what */
+      const recentMini = document.getElementById("fin-recent-mini");
+      if (recentMini) {
+        if (periodTxs.length === 0) {
+          recentMini.innerHTML = "";
+        } else {
+          recentMini.innerHTML = `
+            <div style="font-size:12px; color:#94A3B8; font-weight:700; margin: 8px 0;">Recent Activity:</div>
+            ${periodTxs.slice(0, 3).map(t => formatFinTxRow(t, allCats, false)).join('')}
+          `;
+        }
+      }
+
+      /* 3. Render Accounts List */
+      const accList = document.getElementById("fin-accounts-list");
+      if (accList) {
+        const accMeta = [
+          { key: "Card", icon: "💳", bg: "#3B82F6" },
+          { key: "Cash", icon: "💵", bg: "#10B981" },
+          { key: "Other", icon: "🏦", bg: "#EC4899" }
+        ];
+        accList.innerHTML = accMeta.map(a => `
+          <div class="fin-acc-card" onclick="editFinAccount('${a.key}')">
+            <div class="fin-acc-left">
+              <div class="fin-acc-icon" style="background:${a.bg};">${a.icon}</div>
+              <div>
+                <div class="fin-acc-title">${a.key}</div>
+                <div style="font-size:11px; color:#94A3B8;">Tap to adjust balance (logged by name)</div>
+              </div>
+            </div>
+            <div class="fin-acc-bal">${(state.accounts[a.key] || 0).toLocaleString()} ₪</div>
+          </div>
+        `).join('');
+      }
+
+      /* 4. Render Full Transactions Feed (Who did what) */
+      const txList = document.getElementById("fin-tx-list");
+      if (txList) {
+        if (periodTxs.length === 0) {
+          txList.innerHTML = `<div style="text-align:center; padding: 40px; color: #64748B;">No transactions in this period</div>`;
+        } else {
+          txList.innerHTML = periodTxs.map(t => formatFinTxRow(t, allCats, true)).join('');
+        }
+      }
+
+      /* 5. Render Overview (Analytics + Nikolai vs Polly Breakdown) */
+      const ovBox = document.getElementById("fin-overview-box");
+      if (ovBox) {
+        const sortedCats = allCats
+          .map(c => ({ ...c, spent: catSums[c.name] || 0 }))
+          .filter(c => c.spent > 0)
+          .sort((a, b) => b.spent - a.spent);
+
+        let catsHtml = sortedCats.map(c => {
+          const pct = totalExp > 0 ? Math.round((c.spent / totalExp) * 100) : 0;
+          return `
+            <div class="fin-tx-card" style="display:block;">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span style="font-weight:700; font-size:14px;">${c.icon} ${escapeHtml(c.name)} <span style="color:#94A3B8; font-size:12px;">(${pct}%)</span></span>
+                <span style="font-weight:800; color:#F8FAFC;">${c.spent.toLocaleString()} ₪</span>
+              </div>
+              <div class="fin-bar-bg">
+                <div class="fin-bar-fill" style="width:${pct}%; background:${c.color};"></div>
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        if (!catsHtml) {
+          catsHtml = `<div style="text-align:center; padding: 24px; color: #64748B;">No expenses recorded yet</div>`;
+        }
+
+        ovBox.innerHTML = `
+          <div style="display:flex; gap:10px; margin-bottom:14px;">
+            <div style="flex:1; background:rgba(244,63,94,0.15); border:1px solid rgba(244,63,94,0.3); border-radius:14px; padding:12px; text-align:center;">
+              <div style="font-size:11px; color:#FDA4AF; font-weight:700;">EXPENSES</div>
+              <div style="font-size:18px; font-weight:800; color:#F43F5E; margin-top:4px;">-${totalExp.toLocaleString()} ₪</div>
+            </div>
+            <div style="flex:1; background:rgba(16,185,129,0.15); border:1px solid rgba(16,185,129,0.3); border-radius:14px; padding:12px; text-align:center;">
+              <div style="font-size:11px; color:#6EE7B7; font-weight:700;">INCOME</div>
+              <div style="font-size:18px; font-weight:800; color:#10B981; margin-top:4px;">+${totalInc.toLocaleString()} ₪</div>
+            </div>
+          </div>
+
+          <div class="fin-top-card" style="text-align:left; margin-bottom:14px;">
+            <div style="font-size:12px; color:#94A3B8; font-weight:700; margin-bottom:10px; text-transform:uppercase;">Activity by Person (This Period)</div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+              <span class="task-badge badge-nikolai">Nikolai</span>
+              <span style="font-size:13px; font-weight:700;">Spent: <span style="color:#F87171;">-${actorStats.Nikolai.exp.toLocaleString()} ₪</span>  |  Added: <span style="color:#34D399;">+${actorStats.Nikolai.inc.toLocaleString()} ₪</span></span>
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <span class="task-badge badge-polly">Polly</span>
+              <span style="font-size:13px; font-weight:700;">Spent: <span style="color:#F87171;">-${actorStats.Polly.exp.toLocaleString()} ₪</span>  |  Added: <span style="color:#34D399;">+${actorStats.Polly.inc.toLocaleString()} ₪</span></span>
+            </div>
+          </div>
+
+          <div style="font-size:12px; color:#94A3B8; font-weight:700; margin-bottom:8px; text-transform:uppercase;">Category Breakdown</div>
+          ${catsHtml}
+        `;
+      }
+    }
 
     /* --- UTILS --- */
     function copyLink(e, url, btn) {
