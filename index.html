@@ -44,11 +44,11 @@
     .back-btn { background: rgba(255,255,255,0.1); border: none; color: white; width: 36px; height: 36px; border-radius: 10px; display: flex; justify-content: center; align-items: center; margin-right: 12px; font-size: 18px; cursor: pointer; }
     .nav-header h2 { margin: 0; font-size: 20px; font-weight: 700; }
     .tabs { display: flex; gap: 8px; margin-bottom: 16px; background: rgba(0,0,0,0.3); padding: 4px; border-radius: 10px; }
-    .tab-btn { flex: 1; padding: 10px; border: none; border-radius: 8px; background: transparent; color: rgba(255,255,255,0.5); font-weight: 600; cursor: pointer; transition: 0.2s;}
+    .tab-btn { flex: 1; padding: 10px; border: none; border-radius: 8px; background: transparent; color: rgba(255,255,255,0.5); font-weight: 600; cursor: pointer; transition: 0.2s; }
     .tab-btn.active { background: #2563EB; color: #fff; }
     .del-btn { background: rgba(239, 68, 68, 0.2); border: none; color: #FCA5A5; font-size: 12px; font-weight: bold; border-radius: 6px; padding: 6px 10px; cursor: pointer; flex-shrink: 0; margin-left: 8px; }
 
-    /* NOTES MODULE */
+    /* NOTES & TASKS CARDS */
     .create-box { display: flex; gap: 8px; margin-bottom: 16px; }
     .create-box input { flex: 1; padding: 12px 14px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05); color: #fff; outline: none; }
     .create-box button { padding: 0 18px; border: none; border-radius: 10px; background: #2563EB; color: white; font-size: 20px; font-weight: bold; cursor: pointer; }
@@ -89,8 +89,10 @@
     .assign-btn { flex: 1; padding: 10px; border: none; border-radius: 8px; font-weight: 700; color: #fff; cursor: pointer; font-size: 14px; }
     .assign-nikolai { background: #2563EB; }
     .assign-polly { background: #DB2777; }
-    .task-badge { font-size: 11px; font-weight: 800; padding: 4px 8px; border-radius: 6px; letter-spacing: 0.5px; flex-shrink: 0; white-space: nowrap; }    .badge-nikolai { background: rgba(37, 99, 235, 0.25); color: #60A5FA; border: 1px solid rgba(59, 130, 246, 0.4); }
+    .task-badge { font-size: 11px; font-weight: 800; padding: 4px 8px; border-radius: 6px; letter-spacing: 0.5px; flex-shrink: 0; white-space: nowrap; }
+    .badge-nikolai { background: rgba(37, 99, 235, 0.25); color: #60A5FA; border: 1px solid rgba(59, 130, 246, 0.4); }
     .badge-polly { background: rgba(219, 39, 119, 0.25); color: #F472B6; border: 1px solid rgba(244, 114, 182, 0.4); }
+
     /* FINANCE MODULE (1MONEY STYLE) */
     .fin-top-card { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 14px; margin-bottom: 14px; text-align: center; }
     .fin-acc-label { font-size: 12px; color: #94A3B8; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
@@ -99,7 +101,6 @@
     .fin-nav-arrow { background: rgba(255,255,255,0.08); border: none; color: #CBD5E1; width: 34px; height: 34px; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 15px; }
     .fin-period-pill { flex: 1; background: rgba(37, 99, 235, 0.2); border: 1px solid rgba(59, 130, 246, 0.35); color: #93C5FD; padding: 8px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; }
     
-    /* 1Money Perimeter Grid around Donut */
     .fin-wheel-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; align-items: center; margin-bottom: 16px; }
     .fin-donut-cell { grid-column: 2 / 4; grid-row: 2 / 4; display: flex; justify-content: center; align-items: center; padding: 6px; }
     .fin-donut { width: 156px; height: 156px; border-radius: 50%; background: conic-gradient(#334155 0deg 360deg); display: flex; justify-content: center; align-items: center; box-shadow: 0 8px 25px rgba(0,0,0,0.4); position: relative; }
@@ -108,26 +109,28 @@
     .fin-donut-exp { font-size: 17px; font-weight: 800; color: #F43F5E; margin-top: 2px; }
     .fin-donut-inc { font-size: 13px; font-weight: 700; color: #10B981; margin-top: 4px; cursor: pointer; background: rgba(16, 185, 129, 0.15); padding: 3px 10px; border-radius: 10px; border: 1px solid rgba(16, 185, 129, 0.3); }
 
-    .fin-cat-item { display: flex; flex-direction: column; align-items: center; cursor: pointer; padding: 4px 2px; transition: transform 0.1s; }
+    .fin-cat-item { display: flex; flex-direction: column; align-items: center; cursor: pointer; padding: 4px 2px; transition: transform 0.1s; position: relative; }
     .fin-cat-item:active { transform: scale(0.92); }
     .fin-cat-name { font-size: 11px; color: #CBD5E1; font-weight: 600; margin-bottom: 5px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 72px; }
     .fin-cat-circle { width: 48px; height: 48px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 21px; margin-bottom: 4px; border: 2px solid rgba(255,255,255,0.08); box-shadow: 0 4px 10px rgba(0,0,0,0.25); }
     .fin-cat-val { font-size: 11px; font-weight: 700; color: #94A3B8; }
     .fin-cat-val.spent { color: #F8FAFC; }
 
-    /* Bottom Navigation Bar */
     .fin-bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: #111827; border-top: 1px solid rgba(255,255,255,0.08); display: flex; justify-content: space-around; padding: 8px 6px 12px 6px; z-index: 50; }
     .fin-nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; color: #64748B; font-size: 11px; font-weight: 600; cursor: pointer; background: none; border: none; padding: 6px 0; border-radius: 12px; }
     .fin-nav-item.active { color: #fff; background: rgba(37, 99, 235, 0.2); }
     .fin-nav-icon { font-size: 18px; }
 
-    /* Accounts, Transactions & Actor Badges */
     .fin-acc-card { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.07); border-radius: 14px; padding: 14px 16px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
     .fin-acc-left { display: flex; align-items: center; gap: 12px; }
     .fin-acc-icon { width: 42px; height: 42px; border-radius: 12px; display: flex; justify-content: center; align-items: center; font-size: 20px; }
     .fin-acc-title { font-weight: 700; font-size: 15px; color: #fff; }
     .fin-acc-bal { font-weight: 800; font-size: 16px; color: #34D399; }
-    .fin-modal { display: none; background: rgba(15, 23, 42, 0.98); border: 1px solid rgba(255,255,255,0.18); border-radius: 16px; padding: 16px; margin-bottom: 16px; animation: fadeIn 0.2s ease; }
+
+    /* Centered Popup Modal Overlay */
+    .fin-modal { display: none; position: fixed; left: 16px; right: 16px; top: 50%; transform: translateY(-50%); z-index: 200; background: linear-gradient(145deg, #1E293B, #0F172A); border: 1px solid rgba(59,130,246,0.4); border-radius: 18px; padding: 18px; box-shadow: 0 20px 50px rgba(0,0,0,0.85); }
+    .fin-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.65); z-index: 190; backdrop-filter: blur(3px); }
+
     .fin-tx-card { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 12px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; gap: 10px; }
     .fin-actor-pick { display: flex; gap: 8px; margin-bottom: 10px; }
     .fin-actor-btn { flex: 1; padding: 8px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05); color: #94A3B8; font-weight: 700; font-size: 12px; cursor: pointer; }
@@ -136,7 +139,6 @@
     .fin-bar-bg { width: 100%; height: 7px; background: rgba(255,255,255,0.08); border-radius: 4px; overflow: hidden; margin-top: 6px; }
     .fin-bar-fill { height: 100%; border-radius: 4px; }
 
-    /* Finance Charts & KPIs */
     .fin-kpi-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px; }
     .fin-kpi-box { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07); border-radius: 12px; padding: 10px 6px; text-align: center; }
     .fin-kpi-lbl { font-size: 11px; color: #94A3B8; font-weight: 600; }
@@ -237,7 +239,7 @@
     <div class="wish-form">
       <input type="text" id="wish-name" class="wish-input" placeholder="Item name (e.g. Dyson V15)">
       <div class="wish-row">
-        <input type="text" id="wish-price" class="wish-input" style="flex: 0.8; margin-bottom: 0;" placeholder="Price ($500)">
+        <input type="text" id="wish-price" class="wish-input" style="flex: 0.8; margin-bottom: 0;" placeholder="Price (500)">
         <input type="url" id="wish-url" class="wish-input" style="flex: 1.2; margin-bottom: 0;" placeholder="Link (https://...)">
       </div>
       <button class="wish-submit" onclick="createWish()">Add to Wishlist</button>
@@ -258,7 +260,7 @@
     <div class="wish-form">
       <input type="text" id="order-name" class="wish-input" placeholder="Item name (e.g. AliExpress Case)">
       <div class="wish-row">
-        <input type="text" id="order-price" class="wish-input" style="flex: 0.8; margin-bottom: 0;" placeholder="Price ($5)">
+        <input type="text" id="order-price" class="wish-input" style="flex: 0.8; margin-bottom: 0;" placeholder="Price (5)">
         <input type="url" id="order-url" class="wish-input" style="flex: 1.2; margin-bottom: 0;" placeholder="Link (https://...)">
       </div>
       <button class="wish-submit" style="background: #16A34A;" onclick="createOrder()">Save to Order</button>
@@ -293,13 +295,11 @@
       <h2>Finance</h2>
     </div>
 
-    <!-- Shared (Main) vs Personal Tabs -->
     <div class="tabs">
       <button class="tab-btn active" id="tab-fin-shared" onclick="setFinScope(true)">Shared (Family)</button>
       <button class="tab-btn" id="tab-fin-personal" onclick="setFinScope(false)">Personal</button>
     </div>
 
-    <!-- Top Balance & Period Header -->
     <div class="fin-top-card">
       <div class="fin-acc-label" id="fin-scope-label">All Family Accounts</div>
       <div class="fin-total-val" id="fin-total-balance">0 ₪</div>
@@ -312,10 +312,16 @@
       </div>
     </div>
 
-    <!-- Period & Cycle Day Settings Modal -->
+    <!-- Shared Dark Backdrop for Modals -->
+    <div id="fin-backdrop" class="fin-backdrop" onclick="closeAllFinModals()"></div>
+
+    <!-- 1. Period & Cycle Day Settings Modal -->
     <div id="fin-period-modal" class="fin-modal">
-      <div class="assign-title">Period Mode & Billing Cycle Start Day</div>
-      <div class="assign-btns" style="margin-bottom: 10px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <div style="font-weight:800; font-size:15px; color:#fff;">📅 Period & Cycle Day</div>
+        <button onclick="closeAllFinModals()" style="background:none; border:none; color:#94A3B8; font-size:18px; cursor:pointer;">✕</button>
+      </div>
+      <div class="assign-btns" style="margin-bottom: 12px;">
         <button class="assign-btn" style="background:#334155;" onclick="setFinPeriodMode('month')">Month</button>
         <button class="assign-btn" style="background:#334155;" onclick="setFinPeriodMode('week')">Week</button>
         <button class="assign-btn" style="background:#334155;" onclick="setFinPeriodMode('today')">Today</button>
@@ -328,25 +334,121 @@
       </div>
     </div>
 
-    <!-- Quick Add Expense / Income Modal with Actor Tracking -->
+    <!-- 2. Quick Add Expense / Income Modal -->
     <div id="fin-tx-modal" class="fin-modal">
-      <div class="assign-title" id="fin-tx-modal-title">Add Transaction</div>
-      <div class="fin-actor-pick" id="fin-actor-row">
-        <button class="fin-actor-btn" id="fin-actor-nikolai" onclick="setFinActor('Nikolai')">👤 By: Nikolai</button>
-        <button class="fin-actor-btn" id="fin-actor-polly" onclick="setFinActor('Polly')">👤 By: Polly</button>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <div id="fin-tx-modal-title" style="font-weight:800; font-size:16px; color:#fff;">Add Transaction</div>
+        <button onclick="closeAllFinModals()" style="background:none; border:none; color:#94A3B8; font-size:18px; cursor:pointer;">✕</button>
       </div>
-      <input type="number" id="fin-tx-amount" class="wish-input" placeholder="Amount in ₪ (e.g. 120)">
-      <div class="wish-row">
-        <select id="fin-tx-account" class="wish-input" style="flex:1; margin-bottom:0; background:#1E293B;">
+      <div class="fin-actor-pick" id="fin-actor-row">
+        <button class="fin-actor-btn" id="fin-actor-nikolai" onclick="setFinActor('Nikolai')">👤 Nikolai</button>
+        <button class="fin-actor-btn" id="fin-actor-polly" onclick="setFinActor('Polly')">👤 Polly</button>
+      </div>
+      <div style="position:relative; margin-bottom:12px;">
+        <input type="number" id="fin-tx-amount" placeholder="0" style="width:100%; padding:14px 40px 14px 16px; font-size:24px; font-weight:800; text-align:center; border-radius:12px; border:1px solid rgba(255,255,255,0.15); background:rgba(0,0,0,0.35); color:#fff; outline:none;">
+        <span style="position:absolute; right:16px; top:50%; transform:translateY(-50%); font-size:20px; font-weight:800; color:#64748B;">₪</span>
+      </div>
+      <div class="wish-row" style="margin-bottom:12px;">
+        <select id="fin-tx-account" class="wish-input" style="flex:1; margin-bottom:0; background:#0B1120; font-weight:700;">
           <option value="Card">💳 Card</option>
           <option value="Cash">💵 Cash</option>
           <option value="Other">🏦 Other</option>
         </select>
-        <input type="text" id="fin-tx-note" class="wish-input" style="flex:1.2; margin-bottom:0;" placeholder="Comment (optional)">
+        <input type="text" id="fin-tx-note" class="wish-input" style="flex:1.3; margin-bottom:0; background:#0B1120;" placeholder="Note (optional)">
       </div>
-      <div class="assign-btns" style="margin-top:8px;">
-        <button class="assign-btn" style="background:#475569;" onclick="closeFinTxModal()">Cancel</button>
+      <div class="assign-btns">
+        <button class="assign-btn" style="background:rgba(255,255,255,0.08); color:#CBD5E1;" onclick="closeAllFinModals()">Cancel</button>
         <button class="assign-btn" id="fin-tx-submit-btn" style="background:#2563EB;" onclick="submitFinTx()">Save</button>
+      </div>
+    </div>
+
+    <!-- 3. Account Balance & Add Salary/Gift Modal -->
+    <div id="fin-acc-modal" class="fin-modal">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+        <div id="fin-acc-modal-title" style="font-weight:800; font-size:16px; color:#fff;">💳 Card</div>
+        <button onclick="closeAllFinModals()" style="background:none; border:none; color:#94A3B8; font-size:18px; cursor:pointer;">✕</button>
+      </div>
+      <div class="tabs" style="margin-bottom:12px;">
+        <button class="tab-btn active" id="fin-acc-mode-add" onclick="setFinAccMode('add')">➕ Add Funds</button>
+        <button class="tab-btn" id="fin-acc-mode-set" onclick="setFinAccMode('set')">✏️ Edit Total</button>
+      </div>
+      <div id="fin-acc-reason-box" style="margin-bottom:10px;">
+        <div style="font-size:11px; color:#94A3B8; margin-bottom:6px; font-weight:600;">Select Income Source:</div>
+        <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:6px;">
+          <button class="fin-actor-btn active-nikolai" id="fin-src-Salary" onclick="selectFinAccSource('Salary')">💼 Salary</button>
+          <button class="fin-actor-btn" id="fin-src-Gift" onclick="selectFinAccSource('Gift')">🎁 Gift</button>
+          <button class="fin-actor-btn" id="fin-src-Bonus" onclick="selectFinAccSource('Bonus')">✨ Bonus</button>
+          <button class="fin-actor-btn" id="fin-src-Other" onclick="selectFinAccSource('Other')">💰 Other</button>
+        </div>
+      </div>
+      <input type="number" id="fin-acc-input-val" placeholder="Amount in ₪" style="width:100%; padding:12px; font-size:20px; font-weight:800; text-align:center; border-radius:10px; border:1px solid rgba(255,255,255,0.15); background:rgba(0,0,0,0.35); color:#fff; outline:none; margin-bottom:10px;">
+      <input type="text" id="fin-acc-input-note" class="wish-input" style="background:#0B1120; margin-bottom:12px;" placeholder="Optional comment...">
+      <div class="assign-btns">
+        <button class="assign-btn" style="background:rgba(255,255,255,0.08);" onclick="closeAllFinModals()">Cancel</button>
+        <button class="assign-btn" style="background:#10B981;" onclick="saveFinAccountModal()">Apply</button>
+      </div>
+    </div>
+
+    <!-- 4. Custom Budget Limits Modal -->
+    <div id="fin-limits-modal" class="fin-modal">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <div style="font-weight:800; font-size:15px; color:#fff;">🎯 Set Spending Limits (₪)</div>
+        <button onclick="closeAllFinModals()" style="background:none; border:none; color:#94A3B8; font-size:18px; cursor:pointer;">✕</button>
+      </div>
+      <div style="font-size:12px; color:#94A3B8; margin-bottom:4px; font-weight:600;">📅 Weekly Limit (Sun – Sat):</div>
+      <input type="number" id="fin-input-wlimit" class="wish-input" style="background:#0B1120; font-size:16px; font-weight:700;" placeholder="0 to disable (e.g. 1000)">
+      <div style="font-size:12px; color:#94A3B8; margin-bottom:4px; font-weight:600;">📆 Monthly Limit (10th – 9th):</div>
+      <input type="number" id="fin-input-mlimit" class="wish-input" style="background:#0B1120; font-size:16px; font-weight:700;" placeholder="0 to disable (e.g. 7000)">
+      <div class="assign-btns" style="margin-top:6px;">
+        <button class="assign-btn" style="background:rgba(255,255,255,0.08);" onclick="closeAllFinModals()">Cancel</button>
+        <button class="assign-btn" style="background:#2563EB;" onclick="saveFinBudgetLimitsModal()">Save Limits</button>
+      </div>
+    </div>
+
+    <!-- 5. Custom New Category Modal -->
+    <div id="fin-cat-modal" class="fin-modal">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+        <div style="font-weight:800; font-size:15px; color:#fff;">➕ Create Custom Category</div>
+        <button onclick="closeAllFinModals()" style="background:none; border:none; color:#94A3B8; font-size:18px; cursor:pointer;">✕</button>
+      </div>
+      <div class="wish-row">
+        <input type="text" id="fin-new-cat-name" class="wish-input" style="flex:1.4; margin-bottom:0; background:#0B1120;" placeholder="Name (e.g. Gym)">
+        <input type="text" id="fin-new-cat-icon" class="wish-input" style="flex:0.6; margin-bottom:0; background:#0B1120; text-align:center;" placeholder="Emoji 🏋️">
+      </div>
+      <div class="assign-btns" style="margin-top:10px;">
+        <button class="assign-btn" style="background:rgba(255,255,255,0.08);" onclick="closeAllFinModals()">Cancel</button>
+        <button class="assign-btn" style="background:#2563EB;" onclick="saveCustomFinCategoryModal()">Create</button>
+      </div>
+    </div>
+
+    <!-- 6. Transfer Between Accounts Modal -->
+    <div id="fin-transfer-modal" class="fin-modal">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <div style="font-weight:800; font-size:15px; color:#fff;">⇄ Transfer Between Accounts</div>
+        <button onclick="closeAllFinModals()" style="background:none; border:none; color:#94A3B8; font-size:18px; cursor:pointer;">✕</button>
+      </div>
+      <div class="wish-row">
+        <div style="flex:1;">
+          <div style="font-size:11px; color:#94A3B8; margin-bottom:4px;">From:</div>
+          <select id="fin-trf-from" class="wish-input" style="background:#0B1120; margin-bottom:0;">
+            <option value="Card">💳 Card</option>
+            <option value="Cash">💵 Cash</option>
+            <option value="Other">🏦 Other</option>
+          </select>
+        </div>
+        <div style="flex:1;">
+          <div style="font-size:11px; color:#94A3B8; margin-bottom:4px;">To:</div>
+          <select id="fin-trf-to" class="wish-input" style="background:#0B1120; margin-bottom:0;">
+            <option value="Cash">💵 Cash</option>
+            <option value="Card">💳 Card</option>
+            <option value="Other">🏦 Other</option>
+          </select>
+        </div>
+      </div>
+      <input type="number" id="fin-trf-amount" class="wish-input" style="background:#0B1120; font-size:18px; font-weight:800; text-align:center;" placeholder="Amount in ₪">
+      <div class="assign-btns">
+        <button class="assign-btn" style="background:rgba(255,255,255,0.08);" onclick="closeAllFinModals()">Cancel</button>
+        <button class="assign-btn" style="background:#2563EB;" onclick="submitFinTransfer()">Transfer</button>
       </div>
     </div>
 
@@ -355,18 +457,18 @@
       <div id="fin-accounts-list"></div>
     </div>
 
-    <!-- Sub-view 2: Categories (1Money Wheel + Recent Activity Preview) -->
+    <!-- Sub-view 2: Categories -->
     <div id="fin-view-categories" style="margin-bottom:80px;">
       <div class="fin-wheel-grid" id="fin-wheel-container"></div>
       <div id="fin-recent-mini"></div>
     </div>
 
-    <!-- Sub-view 3: Transactions (Full Who-Did-What Feed) -->
+    <!-- Sub-view 3: Transactions -->
     <div id="fin-view-transactions" style="display:none; margin-bottom:80px;">
       <div id="fin-tx-list"></div>
     </div>
 
-    <!-- Sub-view 4: Overview (Analytics & Who Spent/Added What) -->
+    <!-- Sub-view 4: Overview -->
     <div id="fin-view-overview" style="display:none; margin-bottom:80px;">
       <div id="fin-overview-box"></div>
     </div>
@@ -416,6 +518,7 @@
     let expandedNotes = {};
 
     function openScreen(screenId, devTitle = "") {
+      closeAllFinModals();
       document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
       document.getElementById(screenId).classList.add('active');
       if (screenId === 'screen-dev') document.getElementById('dev-title').textContent = devTitle;
@@ -840,6 +943,23 @@
       { id: "health", name: "Health", icon: "💊", color: "#F43F5E" }
     ];
 
+    function showFinModal(modalId) {
+      closeAllFinModals();
+      const bd = document.getElementById("fin-backdrop");
+      const m = document.getElementById(modalId);
+      if (bd) bd.style.display = "block";
+      if (m) m.style.display = "block";
+    }
+
+    function closeAllFinModals() {
+      const bd = document.getElementById("fin-backdrop");
+      if (bd) bd.style.display = "none";
+      ["fin-period-modal", "fin-tx-modal", "fin-acc-modal", "fin-limits-modal", "fin-cat-modal", "fin-transfer-modal"].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = "none";
+      });
+    }
+
     function detectDefaultActor() {
       if (Number(currentUserId) === 191692918) return "Polly";
       if (Number(currentUserId) === 547418372) return "Nikolai";
@@ -915,8 +1035,7 @@
     function setFinScope(shared) {
       isFinShared = shared;
       finMonthOffset = 0;
-      closeFinTxModal();
-      closeFinAccModal();
+      closeAllFinModals();
       document.getElementById("tab-fin-shared").classList.toggle("active", shared);
       document.getElementById("tab-fin-personal").classList.toggle("active", !shared);
       document.getElementById("fin-scope-label").textContent = shared ? "All Family Accounts" : `${detectDefaultActor()}'s Personal Accounts`;
@@ -925,6 +1044,7 @@
 
     function setFinSubView(view) {
       finSubView = view;
+      closeAllFinModals();
       ["accounts", "categories", "transactions", "overview"].forEach(v => {
         document.getElementById(`fin-view-${v}`).style.display = (v === view) ? "block" : "none";
         document.getElementById(`fin-nav-${v}`).classList.toggle("active", v === view);
@@ -933,16 +1053,15 @@
     }
 
     function toggleFinPeriodModal() {
-      const modal = document.getElementById("fin-period-modal");
       const state = getFinState();
       document.getElementById("fin-cycle-day-input").value = state.cycleDay || 10;
-      modal.style.display = (modal.style.display === "block") ? "none" : "block";
+      showFinModal("fin-period-modal");
     }
 
     function setFinPeriodMode(mode) {
       finPeriodMode = mode;
       finMonthOffset = 0;
-      document.getElementById("fin-period-modal").style.display = "none";
+      closeAllFinModals();
       renderFinance();
     }
 
@@ -952,7 +1071,7 @@
       if (day > 28) day = 28;
       const state = getFinState();
       state.cycleDay = day;
-      document.getElementById("fin-period-modal").style.display = "none";
+      closeAllFinModals();
       await saveFinState(state);
     }
 
@@ -1001,17 +1120,12 @@
       setFinActor(myName);
       const actorRow = document.getElementById("fin-actor-row");
       if (actorRow) actorRow.style.display = isFinShared ? "flex" : "none";
-      document.getElementById("fin-tx-modal-title").textContent = type === "income" ? `➕ Add Income` : `💸 ${categoryName}`;
+      document.getElementById("fin-tx-modal-title").textContent = type === "income" ? "➕ Add Income" : `💸 ${categoryName}`;
       document.getElementById("fin-tx-submit-btn").style.background = type === "income" ? "#10B981" : "#2563EB";
       document.getElementById("fin-tx-amount").value = "";
       document.getElementById("fin-tx-note").value = "";
-      document.getElementById("fin-tx-modal").style.display = "block";
-      document.getElementById("fin-tx-amount").focus();
-    }
-
-    function closeFinTxModal() {
-      const modal = document.getElementById("fin-tx-modal");
-      if (modal) modal.style.display = "none";
+      showFinModal("fin-tx-modal");
+      setTimeout(() => document.getElementById("fin-tx-amount").focus(), 50);
     }
 
     async function submitFinTx() {
@@ -1038,7 +1152,7 @@
         date: new Date().toISOString()
       });
 
-      closeFinTxModal();
+      closeAllFinModals();
       await saveFinState(state);
     }
 
@@ -1057,23 +1171,18 @@
       await saveFinState(state);
     }
 
-    /* Account Modal: Add Salary/Gift or Set Exact Balance */
+    /* Account Modal: Add Salary/Gift or Edit Balance */
     function editFinAccount(accName) {
       editingFinAccount = accName;
       const state = getFinState();
       const currentVal = state.accounts[accName] || 0;
-      document.getElementById("fin-acc-modal-title").textContent = `${accName} (Current: ${currentVal.toLocaleString()} ₪)`;
+      document.getElementById("fin-acc-modal-title").textContent = `${accName} (${currentVal.toLocaleString()} ₪)`;
       document.getElementById("fin-acc-input-val").value = "";
       document.getElementById("fin-acc-input-note").value = "";
       setFinAccMode("add");
       selectFinAccSource("Salary");
-      document.getElementById("fin-acc-modal").style.display = "block";
-      document.getElementById("fin-acc-input-val").focus();
-    }
-
-    function closeFinAccModal() {
-      const m = document.getElementById("fin-acc-modal");
-      if (m) m.style.display = "none";
+      showFinModal("fin-acc-modal");
+      setTimeout(() => document.getElementById("fin-acc-input-val").focus(), 50);
     }
 
     function setFinAccMode(mode) {
@@ -1137,17 +1246,20 @@
           });
         }
       }
-      closeFinAccModal();
+      closeAllFinModals();
       await saveFinState(state);
     }
 
-    async function transferBetweenAccounts() {
-      const fromAcc = prompt("Transfer FROM account (Card, Cash, Other):", "Card");
-      if (!fromAcc || !["Card", "Cash", "Other"].includes(fromAcc)) return;
-      const toAcc = prompt("Transfer TO account (Card, Cash, Other):", "Cash");
-      if (!toAcc || !["Card", "Cash", "Other"].includes(toAcc) || fromAcc === toAcc) return;
-      const amtStr = prompt(`Amount to transfer from ${fromAcc} to ${toAcc} (₪):`);
-      const amt = parseFloat(amtStr);
+    function transferBetweenAccounts() {
+      document.getElementById("fin-trf-amount").value = "";
+      showFinModal("fin-transfer-modal");
+    }
+
+    async function submitFinTransfer() {
+      const fromAcc = document.getElementById("fin-trf-from").value;
+      const toAcc = document.getElementById("fin-trf-to").value;
+      if (fromAcc === toAcc) return;
+      const amt = parseFloat(document.getElementById("fin-trf-amount").value);
       if (isNaN(amt) || amt <= 0) return;
 
       const state = getFinState();
@@ -1163,6 +1275,7 @@
         user: detectDefaultActor(),
         date: new Date().toISOString()
       });
+      closeAllFinModals();
       await saveFinState(state);
     }
 
@@ -1170,7 +1283,7 @@
       const state = getFinState();
       document.getElementById("fin-input-wlimit").value = state.weeklyLimit || "";
       document.getElementById("fin-input-mlimit").value = state.budgetLimit || "";
-      document.getElementById("fin-limits-modal").style.display = "block";
+      showFinModal("fin-limits-modal");
     }
 
     async function saveFinBudgetLimitsModal() {
@@ -1179,15 +1292,15 @@
       const mVal = parseFloat(document.getElementById("fin-input-mlimit").value);
       state.weeklyLimit = (isNaN(wVal) || wVal < 0) ? 0 : wVal;
       state.budgetLimit = (isNaN(mVal) || mVal < 0) ? 0 : mVal;
-      document.getElementById("fin-limits-modal").style.display = "none";
+      closeAllFinModals();
       await saveFinState(state);
     }
 
     function addCustomFinCategory() {
       document.getElementById("fin-new-cat-name").value = "";
       document.getElementById("fin-new-cat-icon").value = "✨";
-      document.getElementById("fin-cat-modal").style.display = "block";
-      document.getElementById("fin-new-cat-name").focus();
+      showFinModal("fin-cat-modal");
+      setTimeout(() => document.getElementById("fin-new-cat-name").focus(), 50);
     }
 
     async function saveCustomFinCategoryModal() {
@@ -1205,15 +1318,17 @@
         color: color,
         isCustom: true
       });
-      document.getElementById("fin-cat-modal").style.display = "none";
+      closeAllFinModals();
       await saveFinState(state);
     }
 
-    async function deleteCustomFinCategory(e, catName) {
+    async function deleteCustomFinCategory(e, idx) {
       e.stopPropagation();
-      if (!confirm(`Delete custom category "${catName}"?`)) return;
       const state = getFinState();
-      state.customCategories = (state.customCategories || []).filter(c => c.name !== catName);
+      const target = (state.customCategories || [])[idx];
+      if (!target) return;
+      if (!confirm(`Delete custom category "${target.name}"?`)) return;
+      state.customCategories.splice(idx, 1);
       await saveFinState(state);
     }
 
@@ -1357,7 +1472,7 @@
       const elapsedDays = Math.max(1, Math.ceil(elapsedMs / 86400000));
       const avgDayExp = Math.round(totalExp / elapsedDays);
 
-      const customMarked = (state.customCategories || []).map(c => ({ ...c, isCustom: true }));
+      const customMarked = (state.customCategories || []).map((c, idx) => ({ ...c, isCustom: true, customIdx: idx }));
       const allCats = [...DEFAULT_FIN_CATEGORIES, ...customMarked];
 
       /* 1. Build Conic Gradient for Donut */
@@ -1376,7 +1491,7 @@
         if (stops.length > 0) gradientStr = stops.join(", ");
       }
 
-      /* 2. Render Categories Wheel (with Delete button on custom categories) */
+      /* 2. Render Categories Wheel */
       container.innerHTML = "";
       const donutCell = document.createElement("div");
       donutCell.className = "fin-donut-cell";
@@ -1395,9 +1510,8 @@
         const sum = catSums[c.name] || 0;
         const item = document.createElement("div");
         item.className = "fin-cat-item";
-        item.style.position = "relative";
         item.onclick = () => openFinTxModal("expense", c.name);
-        const delBadge = c.isCustom ? `<span onclick="deleteCustomFinCategory(event, '${escapeHtml(c.name)}')" style="position:absolute; top:14px; right:8px; background:#EF4444; color:#fff; width:18px; height:18px; border-radius:50%; font-size:10px; font-weight:800; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 6px rgba(0,0,0,0.5);">✕</span>` : '';
+        const delBadge = c.isCustom ? `<span onclick="deleteCustomFinCategory(event, ${c.customIdx})" style="position:absolute; top:14px; right:8px; background:#EF4444; color:#fff; width:18px; height:18px; border-radius:50%; font-size:10px; font-weight:800; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 6px rgba(0,0,0,0.6); z-index:5;">✕</span>` : '';
         item.innerHTML = `
           <div class="fin-cat-name">${escapeHtml(c.name)}</div>
           <div class="fin-cat-circle" style="background:${c.color}22; border-color:${c.color};">${c.icon}</div>
@@ -1429,7 +1543,7 @@
         }
       }
 
-      /* 3. Render Accounts List (Tap to Add Salary/Gift or Edit Balance) */
+      /* 3. Render Accounts List */
       const accList = document.getElementById("fin-accounts-list");
       if (accList) {
         const accMeta = [
@@ -1463,7 +1577,7 @@
         }
       }
 
-      /* 5. Render Overview (True >100% Percentages & Smart Next-Week Saving Advice) */
+      /* 5. Render Overview */
       const ovBox = document.getElementById("fin-overview-box");
       if (ovBox) {
         const sunSatBuckets = buildSunSatBuckets(bounds.start, bounds.end, periodTxs);
@@ -1479,7 +1593,6 @@
           `;
         }).join('');
 
-        /* True Percentage (120%, 150%...) + Bar Width Clamped at 100% */
         const wLimit = state.weeklyLimit || 0;
         const wTruePct = wLimit > 0 ? Math.round((currentWeekExp / wLimit) * 100) : 0;
         const wBarPct = Math.min(100, wTruePct);
@@ -1554,7 +1667,6 @@
             <div class="fin-chart-bars">${barsHtml}</div>
           </div>
 
-          <!-- Dual Budget Limits with True >100% & Smart Recovery Advice -->
           <div class="fin-top-card" style="text-align:left; margin-bottom:14px; cursor:pointer;" onclick="setFinBudgetLimits()">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
               <span style="font-size:12px; color:#94A3B8; font-weight:700; text-transform:uppercase;">🎯 Budget Limits (Weekly & Monthly)</span>
@@ -1621,7 +1733,7 @@
         `;
       }
     }
-  
+
     /* --- UTILS --- */
     function copyLink(e, url, btn) {
       if (e && e.stopPropagation) e.stopPropagation();
