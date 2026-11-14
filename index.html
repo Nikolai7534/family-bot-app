@@ -288,7 +288,7 @@
     <div id="tasks-container"></div>
   </div>
 
-  <!-- 7. FINANCE SCREEN (1MONEY) -->
+<!-- 7. FINANCE SCREEN (1MONEY) -->
   <div id="screen-finance" class="screen">
     <div class="nav-header">
       <button class="back-btn" onclick="openScreen('screen-dashboard')">←</button>
@@ -296,12 +296,12 @@
     </div>
 
     <div class="tabs">
-      <button class="tab-btn active" id="tab-fin-shared" onclick="setFinScope(true)">Shared (Family)</button>
-      <button class="tab-btn" id="tab-fin-personal" onclick="setFinScope(false)">Personal</button>
+      <button class="tab-btn active" id="tab-fin-personal" onclick="setFinScope(false)">Personal</button>
+      <button class="tab-btn" id="tab-fin-shared" onclick="setFinScope(true)">Shared (Family)</button>
     </div>
 
     <div class="fin-top-card">
-      <div class="fin-acc-label" id="fin-scope-label">All Family Accounts</div>
+      <div class="fin-acc-label" id="fin-scope-label">Personal Accounts</div>
       <div class="fin-total-val" id="fin-total-balance">0 ₪</div>
       <div class="fin-period-bar">
         <button class="fin-nav-arrow" onclick="shiftFinPeriod(-1)">«</button>
@@ -459,6 +459,9 @@
 
     <!-- Sub-view 2: Categories -->
     <div id="fin-view-categories" style="margin-bottom:80px;">
+      <div style="display:flex; justify-content:flex-end; gap:8px; margin-bottom:10px;">
+        <button id="fin-edit-cats-btn" onclick="toggleFinEditCats()" style="background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.15); color:#CBD5E1; border-radius:8px; padding:5px 10px; font-size:11px; font-weight:700; cursor:pointer;">⚙️ Edit / Reorder Icons</button>
+      </div>
       <div class="fin-wheel-grid" id="fin-wheel-container"></div>
       <div id="fin-recent-mini"></div>
     </div>
@@ -915,7 +918,8 @@
     }
 
     /* --- MODULE: FINANCE (1MONEY) --- */
-    let isFinShared = true;
+    let isFinShared = false;
+    let isFinEditCats = false;
     let finSubView = "categories";
     let finPeriodMode = "month";
     let finMonthOffset = 0;
@@ -982,7 +986,7 @@
         budgetLimit: 0,
         weeklyLimit: 0,
         accounts: { Card: 0, Cash: 0, Other: 0 },
-        customCategories: [],
+        categories: JSON.parse(JSON.stringify(DEFAULT_FIN_CATEGORIES)),
         transactions: []
       };
     }
@@ -996,12 +1000,16 @@
       if (!rec) return defaultFinState();
       try {
         const parsed = JSON.parse(rec.content);
+        let cats = parsed.categories;
+        if (!Array.isArray(cats)) {
+          cats = [...DEFAULT_FIN_CATEGORIES, ...(parsed.customCategories || [])];
+        }
         return {
           cycleDay: parsed.cycleDay || 10,
           budgetLimit: parsed.budgetLimit || 0,
           weeklyLimit: parsed.weeklyLimit || 0,
           accounts: parsed.accounts || { Card: 0, Cash: 0, Other: 0 },
-          customCategories: parsed.customCategories || [],
+          categories: cats,
           transactions: parsed.transactions || []
         };
       } catch (e) {
@@ -1296,6 +1304,38 @@
       await saveFinState(state);
     }
 
+    function toggleFinEditCats() {
+      isFinEditCats = !isFinEditCats;
+      const btn = document.getElementById("fin-edit-cats-btn");
+      if (btn) {
+        btn.textContent = isFinEditCats ? "✅ Done Editing" : "⚙️ Edit / Reorder Icons";
+        btn.style.background = isFinEditCats ? "#16A34A" : "rgba(255,255,255,0.07)";
+        btn.style.color = "#fff";
+      }
+      renderFinance();
+    }
+
+    async function moveFinCategory(e, idx, dir) {
+      e.stopPropagation();
+      const state = getFinState();
+      const targetIdx = idx + dir;
+      if (targetIdx < 0 || targetIdx >= state.categories.length) return;
+      const temp = state.categories[idx];
+      state.categories[idx] = state.categories[targetIdx];
+      state.categories[targetIdx] = temp;
+      await saveFinState(state);
+    }
+
+    async function deleteFinCategoryByIdx(e, idx) {
+      e.stopPropagation();
+      const state = getFinState();
+      const target = state.categories[idx];
+      if (!target) return;
+      if (!confirm(`Delete category "${target.name}"?`)) return;
+      state.categories.splice(idx, 1);
+      await saveFinState(state);
+    }
+
     function addCustomFinCategory() {
       document.getElementById("fin-new-cat-name").value = "";
       document.getElementById("fin-new-cat-icon").value = "✨";
@@ -1311,24 +1351,13 @@
       const color = colors[Math.floor(Math.random() * colors.length)];
 
       const state = getFinState();
-      state.customCategories.push({
+      state.categories.push({
         id: "cust_" + Date.now(),
         name: name,
         icon: icon,
-        color: color,
-        isCustom: true
+        color: color
       });
       closeAllFinModals();
-      await saveFinState(state);
-    }
-
-    async function deleteCustomFinCategory(e, idx) {
-      e.stopPropagation();
-      const state = getFinState();
-      const target = (state.customCategories || [])[idx];
-      if (!target) return;
-      if (!confirm(`Delete custom category "${target.name}"?`)) return;
-      state.customCategories.splice(idx, 1);
       await saveFinState(state);
     }
 
@@ -1420,6 +1449,8 @@
       const container = document.getElementById("fin-wheel-container");
       if (!container) return;
 
+      document.getElementById("fin-scope-label").textContent = isFinShared ? "All Family Accounts" : `${detectDefaultActor()}'s Personal Accounts`;
+
       const state = getFinState();
       const totalBal = (state.accounts.Card || 0) + (state.accounts.Cash || 0) + (state.accounts.Other || 0);
       document.getElementById("fin-total-balance").textContent = `${totalBal.toLocaleString()} ₪`;
@@ -1472,8 +1503,7 @@
       const elapsedDays = Math.max(1, Math.ceil(elapsedMs / 86400000));
       const avgDayExp = Math.round(totalExp / elapsedDays);
 
-      const customMarked = (state.customCategories || []).map((c, idx) => ({ ...c, isCustom: true, customIdx: idx }));
-      const allCats = [...DEFAULT_FIN_CATEGORIES, ...customMarked];
+      const allCats = state.categories || [];
 
       /* 1. Build Conic Gradient for Donut */
       let gradientStr = "#334155 0deg 360deg";
@@ -1491,7 +1521,7 @@
         if (stops.length > 0) gradientStr = stops.join(", ");
       }
 
-      /* 2. Render Categories Wheel */
+      /* 2. Render Categories Wheel (with Move Left/Right & Delete for ALL icons in Edit Mode) */
       container.innerHTML = "";
       const donutCell = document.createElement("div");
       donutCell.className = "fin-donut-cell";
@@ -1506,17 +1536,26 @@
       `;
       container.appendChild(donutCell);
 
-      allCats.forEach(c => {
+      allCats.forEach((c, idx) => {
         const sum = catSums[c.name] || 0;
         const item = document.createElement("div");
         item.className = "fin-cat-item";
-        item.onclick = () => openFinTxModal("expense", c.name);
-        const delBadge = c.isCustom ? `<span onclick="deleteCustomFinCategory(event, ${c.customIdx})" style="position:absolute; top:14px; right:8px; background:#EF4444; color:#fff; width:18px; height:18px; border-radius:50%; font-size:10px; font-weight:800; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 6px rgba(0,0,0,0.6); z-index:5;">✕</span>` : '';
+        item.onclick = () => {
+          if (!isFinEditCats) openFinTxModal("expense", c.name);
+        };
+
+        const editControls = isFinEditCats ? `
+          <div style="display:flex; gap:3px; margin-top:3px;">
+            <button onclick="moveFinCategory(event, ${idx}, -1)" style="background:#334155; color:#fff; border:none; border-radius:4px; padding:2px 5px; font-size:10px; cursor:pointer;">◀</button>
+            <button onclick="deleteFinCategoryByIdx(event, ${idx})" style="background:#EF4444; color:#fff; border:none; border-radius:4px; padding:2px 5px; font-size:10px; font-weight:800; cursor:pointer;">✕</button>
+            <button onclick="moveFinCategory(event, ${idx}, 1)" style="background:#334155; color:#fff; border:none; border-radius:4px; padding:2px 5px; font-size:10px; cursor:pointer;">▶</button>
+          </div>
+        ` : `<div class="fin-cat-val ${sum > 0 ? 'spent' : ''}">${sum.toLocaleString()} ₪</div>`;
+
         item.innerHTML = `
           <div class="fin-cat-name">${escapeHtml(c.name)}</div>
-          <div class="fin-cat-circle" style="background:${c.color}22; border-color:${c.color};">${c.icon}</div>
-          ${delBadge}
-          <div class="fin-cat-val ${sum > 0 ? 'spent' : ''}">${sum.toLocaleString()} ₪</div>
+          <div class="fin-cat-circle" style="background:${c.color}22; border-color:${isFinEditCats ? '#F59E0B' : c.color};">${c.icon}</div>
+          ${editControls}
         `;
         container.appendChild(item);
       });
