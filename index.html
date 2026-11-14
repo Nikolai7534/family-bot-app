@@ -159,6 +159,22 @@
     .place-title { font-weight: 800; font-size: 16px; color: #fff; margin-bottom: 6px; word-break: break-word; overflow-wrap: anywhere; line-height: 1.35; }
     .place-loc { font-size: 13px; color: #2DD4BF; font-weight: 600; word-break: break-word; overflow-wrap: anywhere; display: flex; align-items: flex-start; gap: 4px; line-height: 1.3; }
     .place-actions { display: flex; flex-direction: column; gap: 6px; min-width: 86px; flex-shrink: 0; }
+
+    /* TASTINGS / DRINKS MODULE */
+    .bg-amber { background: linear-gradient(135deg, #B45309, #F59E0B); }
+    .star-picker { display: flex; align-items: center; justify-content: space-between; background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; padding: 8px 12px; margin-bottom: 10px; }
+    .star-btns { display: flex; gap: 6px; }
+    .star-btn { background: none; border: none; font-size: 22px; cursor: pointer; padding: 0; opacity: 0.25; transition: transform 0.1s, opacity 0.2s; }
+    .star-btn.active { opacity: 1; transform: scale(1.1); }
+    .taste-card { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 14px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+    .taste-info { flex: 1; min-width: 0; }
+    .taste-header { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 6px; }
+    .taste-name { font-weight: 800; font-size: 16px; color: #fff; word-break: break-word; overflow-wrap: anywhere; line-height: 1.3; }
+    .taste-verdict { font-size: 10px; font-weight: 800; padding: 3px 7px; border-radius: 6px; text-transform: uppercase; letter-spacing: 0.4px; }
+    .taste-notes { font-size: 13px; color: #CBD5E1; margin-top: 6px; word-break: break-word; overflow-wrap: anywhere; line-height: 1.35; }
+    .taste-meta { display: flex; align-items: center; gap: 10px; margin-top: 8px; flex-wrap: wrap; }
+    .taste-price { color: #FBBF24; font-weight: 800; font-size: 14px; background: rgba(251, 191, 36, 0.12); padding: 3px 8px; border-radius: 6px; }
+    .taste-stars { font-size: 13px; letter-spacing: 1px; }
   </style>
 </head>
 <body>
@@ -203,9 +219,9 @@
         <div class="grid-icon">📍</div>
         <div class="grid-label">Places</div>
       </div>
-      <div class="grid-item bg-gray" onclick="openScreen('screen-dev', 'Settings')">
-        <div class="grid-icon">⚙️</div>
-        <div class="grid-label">Settings</div>
+      <div class="grid-item bg-amber" onclick="openScreen('screen-tastings')">
+        <div class="grid-icon">🥃</div>
+        <div class="grid-label">Tastings</div>
       </div>
     </div>
   </div>
@@ -506,6 +522,7 @@
       </button>
     </div>
   </div>
+  
   <!-- 8. PLACES SCREEN (TRAVEL & FOOD SPOTS) -->
   <div id="screen-places" class="screen">
     <div class="nav-header">
@@ -525,6 +542,38 @@
     <div id="places-container"></div>
   </div>
 
+  <!-- 9. TASTINGS SCREEN (DRINKS & RATINGS) -->
+  <div id="screen-tastings" class="screen">
+    <div class="nav-header">
+      <button class="back-btn" onclick="openScreen('screen-dashboard')">←</button>
+      <h2>Drinks & Tastings</h2>
+    </div>
+    <div class="tabs">
+      <button class="tab-btn active" id="tab-taste-beer" onclick="setTasteTab('beer')">🍺 Beer</button>
+      <button class="tab-btn" id="tab-taste-whiskey" onclick="setTasteTab('whiskey')">🥃 Whiskey</button>
+      <button class="tab-btn" id="tab-taste-wine" onclick="setTasteTab('wine')">🍷 Wine/Other</button>
+    </div>
+    <div class="wish-form">
+      <input type="text" id="taste-name" class="wish-input" placeholder="Drink name (e.g. Macallan 12 / Guinness)...">
+      <div class="star-picker">
+        <span style="font-size:12px; font-weight:700; color:#FBBF24;" id="taste-rating-label">Taste: 5/5 🔥 Must Buy</span>
+        <div class="star-btns">
+          <button type="button" class="star-btn active" id="t-star-1" onclick="setTasteRating(1)">⭐</button>
+          <button type="button" class="star-btn active" id="t-star-2" onclick="setTasteRating(2)">⭐</button>
+          <button type="button" class="star-btn active" id="t-star-3" onclick="setTasteRating(3)">⭐</button>
+          <button type="button" class="star-btn active" id="t-star-4" onclick="setTasteRating(4)">⭐</button>
+          <button type="button" class="star-btn active" id="t-star-5" onclick="setTasteRating(5)">⭐</button>
+        </div>
+      </div>
+      <div class="wish-row">
+        <input type="text" id="taste-price" class="wish-input" style="flex: 0.7; margin-bottom: 0;" placeholder="Price in ₪">
+        <input type="text" id="taste-note" class="wish-input" style="flex: 1.3; margin-bottom: 0;" placeholder="Notes (taste, shop, etc.)">
+      </div>
+      <button class="wish-submit" style="background: #D97706;" onclick="createTasting()">Save to Collection</button>
+    </div>
+    <div id="tastings-container"></div>
+  </div>
+  
   <!-- =========================================
        MODULE: JAVASCRIPT LOGIC
        ========================================= -->
@@ -539,6 +588,7 @@
     const FIN_PREFIX = "[FIN]";
     const PLACE_TRAVEL_PREFIX = "[PLACE_T]";
     const PLACE_FOOD_PREFIX = "[PLACE_F]";
+    const TASTE_PREFIX = "[TASTE]";
 
     const tg = window.Telegram.WebApp;
     tg.ready();
@@ -559,7 +609,7 @@
       document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
       document.getElementById(screenId).classList.add('active');
       if (screenId === 'screen-dev') document.getElementById('dev-title').textContent = devTitle;
-      if (screenId === 'screen-notes' || screenId === 'screen-wishlist' || screenId === 'screen-order' || screenId === 'screen-tasks' || screenId === 'screen-finance' || screenId === 'screen-places') {
+      if (screenId === 'screen-notes' || screenId === 'screen-wishlist' || screenId === 'screen-order' || screenId === 'screen-tasks' || screenId === 'screen-finance' || screenId === 'screen-places' || screenId === 'screen-tastings') {
         fetchAllData();
       }
     }
@@ -578,6 +628,7 @@
         renderTasks();
         renderFinance();
         renderPlaces();
+        renderTastings();
       } catch (err) {
         alert("System Error: " + err.message + "\nCheck backend and Ngrok.");
       }
@@ -641,7 +692,8 @@
         !n.title.startsWith(TASK_POLLY_PREFIX) &&
         !n.title.startsWith(FIN_PREFIX) &&
         !n.title.startsWith(PLACE_TRAVEL_PREFIX) &&
-        !n.title.startsWith(PLACE_FOOD_PREFIX)
+        !n.title.startsWith(PLACE_FOOD_PREFIX) &&
+        !n.title.startsWith(TASTE_PREFIX)
       );
 
       if (notes.length === 0) {
@@ -1908,6 +1960,124 @@
         nameInput.value = "";
         locInput.value = "";
         urlInput.value = "";
+        fetchAllData();
+      } catch (err) {}
+    }
+  
+    /* --- MODULE: TASTINGS (BEER, WHISKEY, WINE) --- */
+    let activeTasteTab = "beer";
+    let currentTasteRating = 5;
+
+    const TASTE_VERDICTS = {
+      5: { text: "🔥 Top / Must Buy", bg: "rgba(16, 185, 129, 0.2)", color: "#34D399" },
+      4: { text: "👍 Very Tasty", bg: "rgba(59, 130, 246, 0.2)", color: "#60A5FA" },
+      3: { text: "👌 Okay", bg: "rgba(245, 158, 11, 0.2)", color: "#FBBF24" },
+      2: { text: "👎 Not Great", bg: "rgba(249, 115, 22, 0.2)", color: "#FB923C" },
+      1: { text: "🚫 Never Again", bg: "rgba(239, 68, 68, 0.2)", color: "#F87171" }
+    };
+
+    function setTasteTab(tab) {
+      activeTasteTab = tab;
+      document.getElementById("tab-taste-beer").classList.toggle("active", tab === "beer");
+      document.getElementById("tab-taste-whiskey").classList.toggle("active", tab === "whiskey");
+      document.getElementById("tab-taste-wine").classList.toggle("active", tab === "wine");
+      renderTastings();
+    }
+
+    function setTasteRating(stars) {
+      currentTasteRating = stars;
+      for (let i = 1; i <= 5; i++) {
+        const btn = document.getElementById(`t-star-${i}`);
+        if (btn) btn.classList.toggle("active", i <= stars);
+      }
+      const v = TASTE_VERDICTS[stars] || TASTE_VERDICTS[5];
+      const lbl = document.getElementById("taste-rating-label");
+      if (lbl) lbl.textContent = `Taste: ${stars}/5 ${v.text}`;
+    }
+
+    function renderTastings() {
+      const container = document.getElementById("tastings-container");
+      if (!container) return;
+      container.innerHTML = "";
+
+      const rawList = allData.filter(n => n.title.startsWith(TASTE_PREFIX));
+      const parsedList = [];
+
+      rawList.forEach(item => {
+        let details = { category: "beer", rating: 5, price: "", note: "", user: "Nikolai" };
+        try { details = { ...details, ...JSON.parse(item.content) }; } catch (e) {}
+        if (details.category === activeTasteTab) {
+          parsedList.push({
+            id: item.id,
+            name: item.title.replace(TASTE_PREFIX, "").trim(),
+            ...details
+          });
+        }
+      });
+
+      /* Sort highest rated drinks to the top */
+      parsedList.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+
+      if (parsedList.length === 0) {
+        container.innerHTML = `<div style="text-align:center; padding: 40px; color: #64748B;">No drinks rated in this category yet 🥃</div>`;
+        return;
+      }
+
+      parsedList.forEach(drink => {
+        const card = document.createElement("div");
+        card.className = "taste-card";
+        const r = Math.min(5, Math.max(1, Number(drink.rating) || 5));
+        const verdict = TASTE_VERDICTS[r];
+        const starsStr = "⭐".repeat(r);
+        const actor = drink.user || "Nikolai";
+        const badgeClass = (actor === "Polly") ? "badge-polly" : "badge-nikolai";
+
+        card.innerHTML = `
+          <div class="taste-info">
+            <div class="taste-header">
+              <span class="task-badge ${badgeClass}">${escapeHtml(actor)}</span>
+              <span class="taste-verdict" style="background:${verdict.bg}; color:${verdict.color};">${verdict.text}</span>
+            </div>
+            <div class="taste-name">${escapeHtml(drink.name)}</div>
+            ${drink.note ? `<div class="taste-notes">💬 ${escapeHtml(drink.note)}</div>` : ''}
+            <div class="taste-meta">
+              <span class="taste-stars">${starsStr} (${r}/5)</span>
+              ${drink.price ? `<span class="taste-price">${escapeHtml(drink.price)} ₪</span>` : ''}
+            </div>
+          </div>
+          <button class="del-btn" onclick="deleteItem(event, ${drink.id})">Delete</button>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    async function createTasting() {
+      const nameInput = document.getElementById("taste-name");
+      const priceInput = document.getElementById("taste-price");
+      const noteInput = document.getElementById("taste-note");
+
+      const name = nameInput.value.trim();
+      if (!name) return;
+
+      const title = `${TASTE_PREFIX} ${name}`;
+      const content = JSON.stringify({
+        category: activeTasteTab,
+        rating: currentTasteRating,
+        price: priceInput.value.trim(),
+        note: noteInput.value.trim(),
+        user: detectDefaultActor()
+      });
+
+      try {
+        await fetch(`${API_BASE}/api/notes`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-user-id": String(currentUserId), "ngrok-skip-browser-warning": "true" },
+          body: JSON.stringify({ title: title, is_shared: true, content: content })
+        });
+        nameInput.value = "";
+        priceInput.value = "";
+        noteInput.value = "";
+        setTasteRating(5);
         fetchAllData();
       } catch (err) {}
     }
