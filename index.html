@@ -149,6 +149,16 @@
     .fin-bar-v { width: 100%; max-width: 34px; background: linear-gradient(180deg, #F43F5E, #BE123C); border-radius: 6px 6px 0 0; min-height: 4px; transition: height 0.3s ease; }
     .fin-bar-amt { font-size: 10px; color: #FDA4AF; font-weight: 700; margin-bottom: 4px; }
     .fin-bar-lbl { font-size: 10px; color: #64748B; font-weight: 600; margin-top: 6px; text-align: center; }
+
+    /* PLACES MODULE */
+    .bg-teal { background: linear-gradient(135deg, #0D9488, #2DD4BF); }
+    .place-card { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 14px; margin-bottom: 12px; display: flex; gap: 12px; align-items: flex-start; }
+    .place-thumb { width: 52px; height: 52px; border-radius: 14px; background: rgba(13, 148, 136, 0.2); border: 1px solid rgba(45, 212, 191, 0.35); display: flex; justify-content: center; align-items: center; font-size: 24px; flex-shrink: 0; position: relative; overflow: hidden; }
+    .place-favicon { width: 22px; height: 22px; border-radius: 4px; position: absolute; bottom: 3px; right: 3px; background: #0B1120; padding: 2px; }
+    .place-body { flex: 1; min-width: 0; }
+    .place-title { font-weight: 800; font-size: 16px; color: #fff; margin-bottom: 6px; word-break: break-word; overflow-wrap: anywhere; line-height: 1.35; }
+    .place-loc { font-size: 13px; color: #2DD4BF; font-weight: 600; word-break: break-word; overflow-wrap: anywhere; display: flex; align-items: flex-start; gap: 4px; line-height: 1.3; }
+    .place-actions { display: flex; flex-direction: column; gap: 6px; min-width: 86px; flex-shrink: 0; }
   </style>
 </head>
 <body>
@@ -188,6 +198,10 @@
       <div class="grid-item bg-pink" onclick="openScreen('screen-dev', 'Smart Home')">
         <div class="grid-icon">🏠</div>
         <div class="grid-label">Smart Home</div>
+      </div>
+      <div class="grid-item bg-teal" onclick="openScreen('screen-places')">
+        <div class="grid-icon">📍</div>
+        <div class="grid-label">Places</div>
       </div>
       <div class="grid-item bg-gray" onclick="openScreen('screen-dev', 'Settings')">
         <div class="grid-icon">⚙️</div>
@@ -492,6 +506,24 @@
       </button>
     </div>
   </div>
+  <!-- 8. PLACES SCREEN (TRAVEL & FOOD SPOTS) -->
+  <div id="screen-places" class="screen">
+    <div class="nav-header">
+      <button class="back-btn" onclick="openScreen('screen-dashboard')">←</button>
+      <h2>Places to Visit</h2>
+    </div>
+    <div class="tabs">
+      <button class="tab-btn active" id="tab-place-travel" onclick="setPlaceTab('travel')">✈️ Travel & Trips</button>
+      <button class="tab-btn" id="tab-place-food" onclick="setPlaceTab('food')">🍽️ Resto & Bars</button>
+    </div>
+    <div class="wish-form">
+      <input type="text" id="place-name" class="wish-input" placeholder="Place name (long names supported)...">
+      <input type="text" id="place-location" class="wish-input" placeholder="📍 Location / Address / Google Maps link">
+      <input type="url" id="place-url" class="wish-input" placeholder="🌐 Website / Instagram link (https://...)">
+      <button class="wish-submit" style="background: #0D9488;" onclick="createPlace()">Save Place</button>
+    </div>
+    <div id="places-container"></div>
+  </div>
 
   <!-- =========================================
        MODULE: JAVASCRIPT LOGIC
@@ -505,6 +537,8 @@
     const TASK_NIKOLAI_PREFIX = "[TASK_N]";
     const TASK_POLLY_PREFIX = "[TASK_P]";
     const FIN_PREFIX = "[FIN]";
+    const PLACE_TRAVEL_PREFIX = "[PLACE_T]";
+    const PLACE_FOOD_PREFIX = "[PLACE_F]";
 
     const tg = window.Telegram.WebApp;
     tg.ready();
@@ -525,7 +559,7 @@
       document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
       document.getElementById(screenId).classList.add('active');
       if (screenId === 'screen-dev') document.getElementById('dev-title').textContent = devTitle;
-      if (screenId === 'screen-notes' || screenId === 'screen-wishlist' || screenId === 'screen-order' || screenId === 'screen-tasks' || screenId === 'screen-finance') {
+      if (screenId === 'screen-notes' || screenId === 'screen-wishlist' || screenId === 'screen-order' || screenId === 'screen-tasks' || screenId === 'screen-finance' || screenId === 'screen-places') {
         fetchAllData();
       }
     }
@@ -543,6 +577,7 @@
         renderOrders();
         renderTasks();
         renderFinance();
+        renderPlaces();
       } catch (err) {
         alert("System Error: " + err.message + "\nCheck backend and Ngrok.");
       }
@@ -604,7 +639,9 @@
         !n.title.startsWith(ORDER_PREFIX) &&
         !n.title.startsWith(TASK_NIKOLAI_PREFIX) &&
         !n.title.startsWith(TASK_POLLY_PREFIX) &&
-        !n.title.startsWith(FIN_PREFIX)
+        !n.title.startsWith(FIN_PREFIX) &&
+        !n.title.startsWith(PLACE_TRAVEL_PREFIX) &&
+        !n.title.startsWith(PLACE_FOOD_PREFIX)
       );
 
       if (notes.length === 0) {
@@ -1772,7 +1809,109 @@
         `;
       }
     }
+  
+    /* --- MODULE: PLACES (TRAVEL & RESTO/BARS) --- */
+    let activePlaceTab = "travel";
 
+    function setPlaceTab(tab) {
+      activePlaceTab = tab;
+      document.getElementById("tab-place-travel").classList.toggle("active", tab === "travel");
+      document.getElementById("tab-place-food").classList.toggle("active", tab === "food");
+      renderPlaces();
+    }
+
+    function extractDomain(url) {
+      try {
+        return new URL(url).hostname;
+      } catch (e) {
+        return "";
+      }
+    }
+
+    function renderPlaces() {
+      const container = document.getElementById("places-container");
+      if (!container) return;
+      container.innerHTML = "";
+
+      const prefix = activePlaceTab === "travel" ? PLACE_TRAVEL_PREFIX : PLACE_FOOD_PREFIX;
+      const places = allData.filter(n => n.title.startsWith(prefix));
+
+      if (places.length === 0) {
+        const emptyText = activePlaceTab === "travel" ? "No travel spots saved yet ✈️" : "No restaurants or bars saved yet 🍹";
+        container.innerHTML = `<div style="text-align:center; padding: 40px; color: #64748B;">${emptyText}</div>`;
+        return;
+      }
+
+      places.forEach(place => {
+        const card = document.createElement("div");
+        card.className = "place-card";
+        const realTitle = place.title.replace(PLACE_TRAVEL_PREFIX, "").replace(PLACE_FOOD_PREFIX, "").trim();
+
+        let details = { location: "", url: "" };
+        try { details = JSON.parse(place.content); } catch (e) {}
+
+        const baseIcon = activePlaceTab === "travel" ? "🏔️" : "🍽️";
+        const domain = details.url ? extractDomain(details.url) : "";
+        const faviconHtml = domain ? `<img class="place-favicon" src="https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=64" onerror="this.style.display='none'">` : "";
+
+        const webBtnHtml = details.url
+          ? `<button class="link-btn" style="background:#0D9488;" onclick="copyLink(event, '${details.url}', this)">Copy Site</button>`
+          : "";
+
+        const locBtnHtml = details.location
+          ? `<button class="link-btn" style="background:#334155;" onclick="copyLink(event, '${details.location.replace(/'/g, "\\'")}', this)">Copy Map</button>`
+          : "";
+
+        card.innerHTML = `
+          <div class="place-thumb">
+            <span>${baseIcon}</span>
+            ${faviconHtml}
+          </div>
+          <div class="place-body">
+            <div class="place-title">${escapeHtml(realTitle)}</div>
+            ${details.location ? `<div class="place-loc"><span>📍</span><span>${escapeHtml(details.location)}</span></div>` : ''}
+          </div>
+          <div class="place-actions">
+            ${webBtnHtml}
+            ${locBtnHtml}
+            <button class="del-btn" style="margin-left:0; width:100%;" onclick="deleteItem(event, ${place.id})">Delete</button>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    async function createPlace() {
+      const nameInput = document.getElementById("place-name");
+      const locInput = document.getElementById("place-location");
+      const urlInput = document.getElementById("place-url");
+
+      const name = nameInput.value.trim();
+      if (!name) return;
+
+      let url = urlInput.value.trim();
+      if (url && !url.startsWith("http")) url = "https://" + url;
+
+      const prefix = activePlaceTab === "travel" ? PLACE_TRAVEL_PREFIX : PLACE_FOOD_PREFIX;
+      const title = `${prefix} ${name}`;
+      const content = JSON.stringify({
+        location: locInput.value.trim(),
+        url: url
+      });
+
+      try {
+        await fetch(`${API_BASE}/api/notes`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-user-id": String(currentUserId), "ngrok-skip-browser-warning": "true" },
+          body: JSON.stringify({ title: title, is_shared: true, content: content })
+        });
+        nameInput.value = "";
+        locInput.value = "";
+        urlInput.value = "";
+        fetchAllData();
+      } catch (err) {}
+    }
+  
     /* --- UTILS --- */
     function copyLink(e, url, btn) {
       if (e && e.stopPropagation) e.stopPropagation();
