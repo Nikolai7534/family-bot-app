@@ -70,6 +70,10 @@
     .list-item.done .checkbox::after { content: 'V'; color: white; font-size: 12px; position: absolute; font-weight: bold; }
     .list-item.done .item-text { text-decoration: line-through; color: rgba(255,255,255,0.3); }
     .item-text { flex: 1; min-width: 0; font-size: 15px; line-height: 1.4; word-break: break-word; overflow-wrap: anywhere; white-space: pre-wrap; }
+    .item-num { font-size: 13px; font-weight: 700; color: #64748B; margin-right: 8px; margin-top: 2px; min-width: 18px; flex-shrink: 0; }
+    .list-item.done .item-num { opacity: 0.35; }
+    .item-del-btn { background: rgba(239, 68, 68, 0.12); border: none; color: #FCA5A5; width: 24px; height: 24px; border-radius: 6px; font-size: 11px; font-weight: 800; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; margin-left: 10px; }
+    .item-del-btn:active { background: rgba(239, 68, 68, 0.35); }
     .add-item-box { display: flex; margin-top: 12px; gap: 8px; }
     .add-item-box input { flex: 1; padding: 10px 12px; border-radius: 8px; border: none; background: rgba(0,0,0,0.2); color: #fff; outline: none; }
     .add-btn { background: rgba(255,255,255,0.1); color: #fff; border: none; border-radius: 8px; padding: 0 16px; font-weight: bold; cursor: pointer; }
@@ -810,7 +814,9 @@
         let itemsHtml = items.map((item, idx) => `
           <div class="list-item ${item.done ? 'done' : ''}" onclick="toggleNoteItem(${note.id}, ${idx})">
             <div class="checkbox"></div>
+            <span class="item-num">${idx + 1}.</span>
             <div class="item-text">${escapeHtml(item.text)}</div>
+            <button class="item-del-btn" onclick="deleteNoteItem(event, ${note.id}, ${idx})">✕</button>
           </div>
         `).join('');
 
@@ -853,6 +859,14 @@
       const note = allData.find(n => n.id === noteId);
       const items = parseJSON(note.content);
       items[itemIdx].done = !items[itemIdx].done;
+      await saveContent(noteId, items);
+    }
+  
+   async function deleteNoteItem(e, noteId, itemIdx) {
+      e.stopPropagation();
+      const note = allData.find(n => n.id === noteId);
+      const items = parseJSON(note.content);
+      items.splice(itemIdx, 1);
       await saveContent(noteId, items);
     }
 
