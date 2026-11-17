@@ -3,8 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>Family App</title>
-  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <title>Home Helper</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0B1120">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/619/619153.png">  <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <style>
     /* =========================================
        MODULE: STYLES (UI & DESIGN)
@@ -175,6 +179,12 @@
     .taste-meta { display: flex; align-items: center; gap: 10px; margin-top: 8px; flex-wrap: wrap; }
     .taste-price { color: #FBBF24; font-weight: 800; font-size: 14px; background: rgba(251, 191, 36, 0.12); padding: 3px 8px; border-radius: 6px; }
     .taste-stars { font-size: 13px; letter-spacing: 1px; }
+
+    /* AUTH / LOGIN OVERLAY */
+    .auth-overlay { display: none; position: fixed; inset: 0; background: #0B1120; z-index: 9999; padding: 24px; flex-direction: column; justify-content: center; align-items: center; }
+    .auth-card { width: 100%; max-width: 360px; background: linear-gradient(145deg, #1E293B, #0F172A); border: 1px solid rgba(59,130,246,0.35); border-radius: 20px; padding: 24px; box-shadow: 0 20px 50px rgba(0,0,0,0.8); text-align: center; }
+    .auth-rem-row { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 14px 0 18px 0; font-size: 13px; color: #CBD5E1; cursor: pointer; }
+    .logout-pill { position: absolute; top: 16px; right: 16px; z-index: 3; background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.2); color: #fff; font-size: 11px; font-weight: 700; border-radius: 8px; padding: 5px 9px; cursor: pointer; }
   </style>
 </head>
 <body>
@@ -183,9 +193,34 @@
        HTML: SCREENS
        ========================================= -->
 
+  <!-- 0. SECURITY LOGIN OVERLAY -->
+  <div id="auth-overlay" class="auth-overlay">
+    <div class="auth-card">
+      <div style="font-size: 42px; margin-bottom: 8px;">🏠🔒</div>
+      <h2 style="margin: 0 0 6px 0; font-size: 20px; font-weight: 800;">Home Helper Access</h2>
+      <p style="margin: 0 0 18px 0; font-size: 12px; color: #94A3B8;">Select your profile & enter Shared or Personal password</p>
+
+      <div class="fin-actor-pick" style="margin-bottom: 14px;">
+        <button type="button" class="fin-actor-btn active-nikolai" id="login-pick-nikolai" onclick="selectLoginUser(547418372, 'Nikolai')">👤 Nikolai</button>
+        <button type="button" class="fin-actor-btn" id="login-pick-polly" onclick="selectLoginUser(191692918, 'Polly')">👤 Polly</button>
+      </div>
+
+      <input type="password" id="login-pass-input" class="wish-input" style="background:#0B1120; text-align:center; font-size:16px; font-weight:700; margin-bottom:4px;" placeholder="Enter Password...">
+
+      <label class="auth-rem-row">
+        <input type="checkbox" id="login-remember" checked style="width:17px; height:17px; accent-color:#2563EB;">
+        <span>Remember me on this phone</span>
+      </label>
+
+      <button class="wish-submit" style="background:#2563EB;" onclick="submitAppLogin()">Unlock App</button>
+      <div id="login-err-msg" style="color:#F87171; font-size:12px; font-weight:700; margin-top:10px; display:none;">Invalid password! Try again.</div>
+    </div>
+  </div>
+
   <!-- 1. DASHBOARD -->
   <div id="screen-dashboard" class="screen active">
     <div class="welcome-card">
+      <button class="logout-pill" onclick="openAuthLock()">🔒 Switch / Lock</button>
       <h2>Welcome Back!</h2>
       <p id="user-greeting">Loading...</p>
       <div class="rocket">🚀</div>
@@ -594,9 +629,70 @@
     tg.ready();
     tg.expand();
 
-    const currentUserId = tg.initDataUnsafe?.user?.id || 547418372;
-    const userName = tg.initDataUnsafe?.user?.first_name || "User";
-    document.getElementById("user-greeting").textContent = `Hello, ${userName}!`;
+    let currentUserId = Number(localStorage.getItem("hh_uid")) || tg.initDataUnsafe?.user?.id || 547418372;
+    let userName = localStorage.getItem("hh_uname") || tg.initDataUnsafe?.user?.first_name || (currentUserId === 191692918 ? "Polly" : "Nikolai");
+    let currentAuthKey = localStorage.getItem("hh_auth_key") || "";
+
+    function updateGreeting() {
+      document.getElementById("user-greeting").textContent = `Hello, ${userName}!`;
+    }
+    updateGreeting();
+
+    /* Intercept all API requests to attach x-auth-key automatically */
+    const origFetch = window.fetch;
+    window.fetch = async function(url, options = {}) {
+      if (typeof url === "string" && url.startsWith(API_BASE)) {
+        options.headers = {
+          ...(options.headers || {}),
+          "x-user-id": String(currentUserId),
+          "x-auth-key": currentAuthKey,
+          "ngrok-skip-browser-warning": "true"
+        };
+      }
+      return origFetch(url, options);
+    };
+
+    function selectLoginUser(uid, uname) {
+      currentUserId = uid;
+      userName = uname;
+      document.getElementById("login-pick-nikolai").className = "fin-actor-btn" + (uid === 547418372 ? " active-nikolai" : "");
+      document.getElementById("login-pick-polly").className = "fin-actor-btn" + (uid === 191692918 ? " active-polly" : "");
+    }
+
+    function openAuthLock() {
+      selectLoginUser(currentUserId, currentUserId === 191692918 ? "Polly" : "Nikolai");
+      document.getElementById("login-pass-input").value = "";
+      document.getElementById("login-err-msg").style.display = "none";
+      document.getElementById("auth-overlay").style.display = "flex";
+    }
+
+    async function submitAppLogin() {
+      const pass = document.getElementById("login-pass-input").value.trim();
+      if (!pass) return;
+      currentAuthKey = pass;
+      try {
+        const res = await fetch(`${API_BASE}/api/notes`);
+        if (res.status === 401) {
+          document.getElementById("login-err-msg").style.display = "block";
+          return;
+        }
+        if (document.getElementById("login-remember").checked) {
+          localStorage.setItem("hh_uid", String(currentUserId));
+          localStorage.setItem("hh_uname", userName);
+          localStorage.setItem("hh_auth_key", currentAuthKey);
+        }
+        updateGreeting();
+        document.getElementById("auth-overlay").style.display = "none";
+        allData = await res.json();
+        renderNotes(); renderWishes(); renderOrders(); renderTasks(); renderFinance(); renderPlaces(); renderTastings();
+      } catch (e) {
+        alert("Cannot reach server. Check Ngrok.");
+      }
+    }
+
+    if (!currentAuthKey) {
+      openAuthLock();
+    }
 
     let allData = [];
     let isNotesShared = true;
@@ -605,6 +701,7 @@
     let expandedNotes = {};
 
     function openScreen(screenId, devTitle = "") {
+      if (!currentAuthKey) { openAuthLock(); return; }
       closeAllFinModals();
       document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
       document.getElementById(screenId).classList.add('active');
@@ -615,10 +712,13 @@
     }
 
     async function fetchAllData() {
+      if (!currentAuthKey) { openAuthLock(); return; }
       try {
-        const res = await fetch(`${API_BASE}/api/notes`, {
-          headers: { "x-user-id": String(currentUserId), "ngrok-skip-browser-warning": "true" }
-        });
+        const res = await fetch(`${API_BASE}/api/notes`);
+        if (res.status === 401) {
+          openAuthLock();
+          return;
+        }
         if (!res.ok) throw new Error("Status: " + res.status);
         allData = await res.json();
 
@@ -638,10 +738,7 @@
       e.stopPropagation();
       if (!confirm("Delete this?")) return;
       try {
-        await fetch(`${API_BASE}/api/notes/${id}`, {
-          method: "DELETE",
-          headers: { "x-user-id": String(currentUserId), "ngrok-skip-browser-warning": "true" }
-        });
+        await fetch(`${API_BASE}/api/notes/${id}`, { method: "DELETE" });
         fetchAllData();
       } catch (err) {}
     }
