@@ -203,13 +203,14 @@
     .cal-grid-wrap { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06); border-radius: 16px; padding: 10px 8px; margin-bottom: 14px; }
     .cal-weekdays { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-size: 11px; font-weight: 700; color: #64748B; margin-bottom: 6px; }
     .cal-days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
-    .cal-day { min-height: 44px; border-radius: 10px; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding-top: 6px; cursor: pointer; transition: 0.15s; border: 1px solid transparent; }
+    .cal-day { min-height: 44px; border-radius: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: 0.15s; border: 2px solid transparent; background: rgba(255,255,255,0.03); position: relative; }
     .cal-day:active { transform: scale(0.94); }
-    .cal-day.empty { cursor: default; pointer-events: none; }
-    .cal-day.today { border-color: #38BDF8; background: rgba(56, 189, 248, 0.12); }
-    .cal-day.selected { background: #2563EB; border-color: #60A5FA; }
-    .cal-day-num { font-size: 13px; font-weight: 700; color: #E2E8F0; line-height: 1; }
+    .cal-day.empty { cursor: default; pointer-events: none; background: transparent; }
+    .cal-day.today { border-color: #38BDF8; }
+    .cal-day.selected { border-color: #FFFFFF; box-shadow: 0 0 0 1px rgba(255,255,255,0.6); }
+    .cal-day-num { font-size: 14px; font-weight: 800; color: #E2E8F0; line-height: 1; text-shadow: 0 1px 3px rgba(0,0,0,0.65); }
     .cal-day.selected .cal-day-num { color: #fff; }
+    .cal-day-cnt { font-size: 9px; font-weight: 800; color: rgba(255,255,255,0.85); margin-top: 2px; text-shadow: 0 1px 2px rgba(0,0,0,0.7); }
     .cal-dots { display: flex; gap: 3px; flex-wrap: wrap; justify-content: center; margin-top: 5px; max-width: 30px; }
     .cal-dot { width: 5px; height: 5px; border-radius: 50%; }
 
@@ -706,14 +707,14 @@
 
     <div class="cal-form" id="cal-add-form">
       <input type="text" id="cal-in-title" class="wish-input" placeholder="Event title (e.g. Dentist, Car test)...">
-      <div class="wish-row">
+   <div class="wish-row">
         <div style="flex:1;">
-          <label class="cal-field-lbl">Start Date</label>
-          <input type="date" id="cal-in-start" class="wish-input" style="margin-bottom:0;">
+          <label class="cal-field-lbl">Start (12.12 or 12.12.2027)</label>
+          <input type="text" id="cal-in-start" class="wish-input" style="margin-bottom:0;" placeholder="DD.MM" inputmode="decimal">
         </div>
         <div style="flex:1;">
-          <label class="cal-field-lbl">End Date (optional)</label>
-          <input type="date" id="cal-in-end" class="wish-input" style="margin-bottom:0;">
+          <label class="cal-field-lbl">End (optional)</label>
+          <input type="text" id="cal-in-end" class="wish-input" style="margin-bottom:0;" placeholder="DD.MM" inputmode="decimal">
         </div>
       </div>
       <div style="margin-top:10px;">
@@ -2374,6 +2375,15 @@
     /* --- CALENDAR MODULE --- */
     const CAL_MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
     const CAL_CAT_ICONS = { normal: "▫️", important: "🔴", nikolai: "🔵", polly: "🩷", trips: "🟢", holidays: "🟣", pet: "🐾" };
+    const CAL_CAT_COLORS = {
+      normal: "rgba(148, 163, 184, 0.38)",
+      important: "rgba(239, 68, 68, 0.62)",
+      nikolai: "rgba(59, 130, 246, 0.62)",
+      polly: "rgba(236, 72, 153, 0.62)",
+      trips: "rgba(34, 197, 94, 0.55)",
+      holidays: "rgba(168, 85, 247, 0.62)",
+      pet: "rgba(245, 158, 11, 0.60)"
+    };
 
     let calPlans = [];
     let calViewMode = "day";
@@ -2386,6 +2396,27 @@
       return `${y}-${m}-${day}`;
     }
 
+    function isoToShortInput(iso) {
+      if (!iso) return "";
+      const [y, m, d] = iso.split("-");
+      const curY = String(new Date().getFullYear());
+      return y === curY ? `${d}.${m}` : `${d}.${m}.${y}`;
+    }
+
+    function parseSmartDateInput(raw) {
+      const s = (raw || "").trim().replace(/\//g, ".");
+      if (!s) return "";
+      const m = s.match(/^(\d{1,2})\.(\d{1,2})(?:\.(\d{2}|\d{4}))?$/);
+      if (!m) return null;
+      const day = parseInt(m[1], 10);
+      const mon = parseInt(m[2], 10);
+      let yr = m[3] ? parseInt(m[3], 10) : new Date().getFullYear();
+      if (yr < 100) yr += 2000;
+      const dt = new Date(yr, mon - 1, day);
+      if (dt.getFullYear() !== yr || dt.getMonth() !== mon - 1 || dt.getDate() !== day) return null;
+      return fmtLocalDate(dt);
+    }
+
     function parseLocalDate(str) {
       const [y, m, d] = str.split("-").map(Number);
       return new Date(y, m - 1, d);
@@ -2395,6 +2426,24 @@
     let calCurYear = _nowInit.getFullYear();
     let calCurMonth = _nowInit.getMonth();
     let calSelectedDate = fmtLocalDate(_nowInit);
+
+    /* Touch swipe left/right on calendar grid */
+    (function initCalSwipe() {
+      const wrap = document.querySelector(".cal-grid-wrap");
+      if (!wrap) return;
+      let startX = 0, startY = 0;
+      wrap.addEventListener("touchstart", e => {
+        startX = e.touches[0].clientX;
+        startY = e.touches[0].clientY;
+      }, { passive: true });
+      wrap.addEventListener("touchend", e => {
+        const dx = e.changedTouches[0].clientX - startX;
+        const dy = e.changedTouches[0].clientY - startY;
+        if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy) * 1.2) {
+          calShiftMonth(dx < 0 ? 1 : -1);
+        }
+      }, { passive: true });
+    })();
 
     async function fetchCalendar() {
       if (!currentAuthKey) { openAuthLock(); return; }
@@ -2430,7 +2479,7 @@
       document.getElementById("cal-tab-day").classList.add("active");
       document.getElementById("cal-tab-all").classList.remove("active");
       const startIn = document.getElementById("cal-in-start");
-      if (startIn) startIn.value = dateStr;
+      if (startIn) startIn.value = isoToShortInput(dateStr);
       renderCalendar();
     }
 
@@ -2445,7 +2494,7 @@
       const form = document.getElementById("cal-add-form");
       form.classList.toggle("open");
       if (form.classList.contains("open")) {
-        document.getElementById("cal-in-start").value = calSelectedDate;
+        document.getElementById("cal-in-start").value = isoToShortInput(calSelectedDate);
         document.getElementById("cal-in-end").value = "";
         document.getElementById("cal-in-time").value = "";
         document.getElementById("cal-in-title").focus();
@@ -2456,6 +2505,15 @@
       calSelectedCat = cat;
       document.querySelectorAll("#cal-cat-picker .cal-cat-chip").forEach(b => b.classList.remove("active"));
       btn.classList.add("active");
+    }
+
+    function buildCellBackground(cats) {
+      const uniq = [...new Set(cats)].slice(0, 3);
+      if (uniq.length === 0) return "";
+      const cols = uniq.map(c => CAL_CAT_COLORS[c] || CAL_CAT_COLORS.normal);
+      if (cols.length === 1) return cols[0];
+      if (cols.length === 2) return `linear-gradient(135deg, ${cols[0]} 50%, ${cols[1]} 50%)`;
+      return `linear-gradient(135deg, ${cols[0]} 33.3%, ${cols[1]} 33.3% 66.6%, ${cols[2]} 66.6%)`;
     }
 
     function renderCalendar() {
@@ -2486,12 +2544,12 @@
           return p.start_date <= dateStr && p.end_date >= dateStr;
         });
 
-        const dotsHtml = dayPlans.slice(0, 4).map(p => {
-          const dotCat = (dateStr === todayStr && p.start_date < todayStr) ? "important" : (p.category || "normal");
-          return `<span class="cal-dot dot-${dotCat}"></span>`;
-        }).join("");
+        const cats = dayPlans.map(p => (dateStr === todayStr && p.start_date < todayStr) ? "important" : (p.category || "normal"));
+        const bg = buildCellBackground(cats);
+        if (bg) cell.style.background = bg;
 
-        cell.innerHTML = `<div class="cal-day-num">${d}</div><div class="cal-dots">${dotsHtml}</div>`;
+        const cntHtml = dayPlans.length > 1 ? `<div class="cal-day-cnt">•${dayPlans.length}</div>` : "";
+        cell.innerHTML = `<div class="cal-day-num">${d}</div>${cntHtml}`;
         grid.appendChild(cell);
       }
 
@@ -2559,6 +2617,39 @@
         `;
         container.appendChild(card);
       });
+    }
+
+    async function createCalEvent() {
+      const title = document.getElementById("cal-in-title").value.trim();
+      const start_date = parseSmartDateInput(document.getElementById("cal-in-start").value);
+      const endRaw = document.getElementById("cal-in-end").value.trim();
+      const end_date = endRaw ? parseSmartDateInput(endRaw) : start_date;
+      const event_time = document.getElementById("cal-in-time").value || "";
+
+      if (!title) return;
+      if (!start_date) { alert("Invalid Start Date. Use DD.MM or DD.MM.YYYY (e.g. 12.12)"); return; }
+      if (endRaw && !end_date) { alert("Invalid End Date. Use DD.MM or DD.MM.YYYY"); return; }
+      if (end_date < start_date) { alert("End date cannot be earlier than start date."); return; }
+
+      try {
+        const res = await fetch(`${API_BASE}/api/calendar`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ title, start_date, end_date, event_time, category: calSelectedCat })
+        });
+        if (!res.ok) throw new Error("Save failed");
+        document.getElementById("cal-in-title").value = "";
+        document.getElementById("cal-in-end").value = "";
+        document.getElementById("cal-in-time").value = "";
+        document.getElementById("cal-add-form").classList.remove("open");
+        calSelectedDate = start_date;
+        const dt = parseLocalDate(start_date);
+        calCurYear = dt.getFullYear();
+        calCurMonth = dt.getMonth();
+        await fetchCalendar();
+      } catch (err) {
+        alert("Error saving event: " + err.message);
+      }
     }
 
     async function createCalEvent() {
