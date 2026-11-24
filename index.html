@@ -835,6 +835,9 @@
       if (screenId === 'screen-notes' || screenId === 'screen-wishlist' || screenId === 'screen-order' || screenId === 'screen-tasks' || screenId === 'screen-finance' || screenId === 'screen-places' || screenId === 'screen-tastings') {
         fetchAllData();
       }
+      if (screenId === 'screen-calendar') {
+        fetchCalendar();
+      }
     }
 
     async function fetchAllData() {
@@ -2366,6 +2369,244 @@
         btn.innerText = oldText;
         btn.style.background = oldBg || "#2563EB";
       }, 1500);
+    }
+ 
+    /* --- CALENDAR MODULE --- */
+    const CAL_MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    const CAL_CAT_ICONS = { normal: "▫️", important: "🔴", nikolai: "🔵", polly: "🩷", trips: "🟢", holidays: "🟣", pet: "🐾" };
+
+    let calPlans = [];
+    let calViewMode = "day";
+    let calSelectedCat = "normal";
+
+    function fmtLocalDate(d) {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${y}-${m}-${day}`;
+    }
+
+    function parseLocalDate(str) {
+      const [y, m, d] = str.split("-").map(Number);
+      return new Date(y, m - 1, d);
+    }
+
+    const _nowInit = new Date();
+    let calCurYear = _nowInit.getFullYear();
+    let calCurMonth = _nowInit.getMonth();
+    let calSelectedDate = fmtLocalDate(_nowInit);
+
+    async function fetchCalendar() {
+      if (!currentAuthKey) { openAuthLock(); return; }
+      try {
+        const res = await fetch(`${API_BASE}/api/calendar`);
+        if (res.status === 401) { openAuthLock(); return; }
+        if (!res.ok) throw new Error("Status: " + res.status);
+        calPlans = await res.json();
+        renderCalendar();
+      } catch (err) {
+        alert("Calendar Error: " + err.message);
+      }
+    }
+
+    function calShiftMonth(delta) {
+      calCurMonth += delta;
+      if (calCurMonth < 0) { calCurMonth = 11; calCurYear--; }
+      if (calCurMonth > 11) { calCurMonth = 0; calCurYear++; }
+      renderCalendar();
+    }
+
+    function calGoToday() {
+      const now = new Date();
+      calCurYear = now.getFullYear();
+      calCurMonth = now.getMonth();
+      calSelectedDate = fmtLocalDate(now);
+      calSetView("day");
+    }
+
+    function calSelectDate(dateStr) {
+      calSelectedDate = dateStr;
+      calViewMode = "day";
+      document.getElementById("cal-tab-day").classList.add("active");
+      document.getElementById("cal-tab-all").classList.remove("active");
+      const startIn = document.getElementById("cal-in-start");
+      if (startIn) startIn.value = dateStr;
+      renderCalendar();
+    }
+
+    function calSetView(mode) {
+      calViewMode = mode;
+      document.getElementById("cal-tab-day").classList.toggle("active", mode === "day");
+      document.getElementById("cal-tab-all").classList.toggle("active", mode === "all");
+      renderCalendar();
+    }
+
+    function toggleCalForm() {
+      const form = document.getElementById("cal-add-form");
+      form.classList.toggle("open");
+      if (form.classList.contains("open")) {
+        document.getElementById("cal-in-start").value = calSelectedDate;
+        document.getElementById("cal-in-end").value = "";
+        document.getElementById("cal-in-time").value = "";
+        document.getElementById("cal-in-title").focus();
+      }
+    }
+
+    function calPickCat(cat, btn) {
+      calSelectedCat = cat;
+      document.querySelectorAll("#cal-cat-picker .cal-cat-chip").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+    }
+
+    function renderCalendar() {
+      document.getElementById("cal-month-label").textContent = `${CAL_MONTHS[calCurMonth]} ${calCurYear}`;
+      const grid = document.getElementById("cal-days-grid");
+      grid.innerHTML = "";
+
+      const todayStr = fmtLocalDate(new Date());
+      const firstDay = new Date(calCurYear, calCurMonth, 1).getDay();
+      const daysInMonth = new Date(calCurYear, calCurMonth + 1, 0).getDate();
+
+      for (let i = 0; i < firstDay; i++) {
+        const empty = document.createElement("div");
+        empty.className = "cal-day empty";
+        grid.appendChild(empty);
+      }
+
+      for (let d = 1; d <= daysInMonth; d++) {
+        const dateStr = `${calCurYear}-${String(calCurMonth + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+        const cell = document.createElement("div");
+        cell.className = "cal-day";
+        if (dateStr === todayStr) cell.classList.add("today");
+        if (dateStr === calSelectedDate && calViewMode === "day") cell.classList.add("selected");
+        cell.onclick = () => calSelectDate(dateStr);
+
+        const dayPlans = calPlans.filter(p => {
+          if (dateStr === todayStr && p.start_date < todayStr) return true;
+          return p.start_date <= dateStr && p.end_date >= dateStr;
+        });
+
+        const dotsHtml = dayPlans.slice(0, 4).map(p => {
+          const dotCat = (dateStr === todayStr && p.start_date < todayStr) ? "important" : (p.category || "normal");
+          return `<span class="cal-dot dot-${dotCat}"></span>`;
+        }).join("");
+
+        cell.innerHTML = `<div class="cal-day-num">${d}</div><div class="cal-dots">${dotsHtml}</div>`;
+        grid.appendChild(cell);
+      }
+
+      renderCalendarList(todayStr);
+    }
+
+    function renderCalendarList(todayStr) {
+      const container = document.getElementById("cal-events-list");
+      container.innerHTML = "";
+      const todayDt = parseLocalDate(todayStr);
+
+      let list = [];
+      if (calViewMode === "all") {
+        list = [...calPlans];
+      } else {
+        list = calPlans.filter(p => {
+          if (calSelectedDate === todayStr) return p.start_date <= todayStr;
+          return p.start_date <= calSelectedDate && p.end_date >= calSelectedDate;
+        });
+      }
+
+      if (list.length === 0) {
+        const label = calViewMode === "all" ? "No active plans yet." : `No plans for ${calSelectedDate.split("-").reverse().join(".")}.`;
+        container.innerHTML = `<div style="text-align:center; padding:26px; color:#64748B; font-size:14px;">${label}</div>`;
+        return;
+      }
+
+      list.forEach(p => {
+        const sDt = parseLocalDate(p.start_date);
+        const eDt = parseLocalDate(p.end_date);
+        const diff = Math.round((sDt - todayDt) / 86400000);
+
+        let badgeHtml = "";
+        if (sDt <= todayDt && todayDt <= eDt) {
+          badgeHtml = `<span class="cal-badge today">🔥 Today</span>`;
+        } else if (diff === 1) {
+          badgeHtml = `<span class="cal-badge today">⏳ Tomorrow</span>`;
+        } else if (diff > 1) {
+          badgeHtml = `<span class="cal-badge">⏳ in ${diff}d</span>`;
+        } else {
+          badgeHtml = `<span class="cal-badge overdue">⚠️ Overdue ${Math.abs(diff)}d</span>`;
+        }
+
+        const sLbl = p.start_date.split("-").reverse().join(".");
+        const eLbl = p.end_date.split("-").reverse().join(".");
+        const dateLbl = p.start_date !== p.end_date ? `${sLbl.slice(0,5)} – ${eLbl}` : sLbl;
+        const timeBadge = p.event_time ? `<span class="cal-badge">⏰ ${p.event_time}</span>` : "";
+        const icon = CAL_CAT_ICONS[p.category] || "▫️";
+
+        const card = document.createElement("div");
+        card.className = `cal-ev-card cat-${p.category || "normal"}`;
+        card.innerHTML = `
+          <div style="flex:1; min-width:0;">
+            <div class="cal-ev-title">${icon} ${escapeHtml(p.title)}</div>
+            <div class="cal-ev-meta">
+              <span>📅 ${dateLbl}</span>
+              ${timeBadge}
+              ${badgeHtml}
+            </div>
+          </div>
+          <div class="cal-ev-btns">
+            <button class="cal-done-btn" onclick="markCalDone(${p.id})">✓</button>
+            <button class="del-btn" onclick="deleteCalEvent(${p.id})">✕</button>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    async function createCalEvent() {
+      const title = document.getElementById("cal-in-title").value.trim();
+      const start_date = document.getElementById("cal-in-start").value;
+      const end_date = document.getElementById("cal-in-end").value || start_date;
+      const event_time = document.getElementById("cal-in-time").value || "";
+      if (!title || !start_date) return;
+      if (end_date < start_date) { alert("End date cannot be earlier than start date."); return; }
+
+      try {
+        const res = await fetch(`${API_BASE}/api/calendar`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ title, start_date, end_date, event_time, category: calSelectedCat })
+        });
+        if (!res.ok) throw new Error("Save failed");
+        document.getElementById("cal-in-title").value = "";
+        document.getElementById("cal-in-end").value = "";
+        document.getElementById("cal-in-time").value = "";
+        document.getElementById("cal-add-form").classList.remove("open");
+        calSelectedDate = start_date;
+        const dt = parseLocalDate(start_date);
+        calCurYear = dt.getFullYear();
+        calCurMonth = dt.getMonth();
+        await fetchCalendar();
+      } catch (err) {
+        alert("Error saving event: " + err.message);
+      }
+    }
+
+    async function markCalDone(id) {
+      try {
+        await fetch(`${API_BASE}/api/calendar/${id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ is_done: 1 })
+        });
+        await fetchCalendar();
+      } catch (err) {}
+    }
+
+    async function deleteCalEvent(id) {
+      if (!confirm("Delete this event?")) return;
+      try {
+        await fetch(`${API_BASE}/api/calendar/${id}`, { method: "DELETE" });
+        await fetchCalendar();
+      } catch (err) {}
     }
 </script>
 </body>
