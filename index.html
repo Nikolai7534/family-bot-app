@@ -248,7 +248,41 @@
     .cal-badge.today { background: rgba(245, 158, 11, 0.22); color: #FCD34D; }
     .cal-ev-btns { display: flex; gap: 6px; flex-shrink: 0; }
     .cal-done-btn { background: rgba(22, 163, 74, 0.2); border: 1px solid rgba(74, 222, 128, 0.35); color: #4ADE80; border-radius: 8px; padding: 7px 10px; font-size: 12px; font-weight: 800; cursor: pointer; }
-  </style>
+ 
+    /* SHOPPING MODULE */
+    .shop-chips-hdr { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .shop-chips-title { font-size: 12px; font-weight: 700; color: #94A3B8; text-transform: uppercase; letter-spacing: 0.5px; }
+    .shop-edit-btn { background: rgba(255,255,255,0.08); border: none; color: #CBD5E1; font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 8px; cursor: pointer; }
+    .shop-edit-btn.active { background: #F59E0B; color: #0B1120; }
+
+    .shop-chips-row { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 12px; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+    .shop-chips-row::-webkit-scrollbar { display: none; }
+    .shop-chip { flex-shrink: 0; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.1); color: #F1F5F9; padding: 8px 12px; border-radius: 20px; font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: 0.15s; }
+    .shop-chip:active { transform: scale(0.95); }
+    .shop-chip.in-list { background: rgba(245, 158, 11, 0.22); border-color: rgba(245, 158, 11, 0.55); color: #FDE68A; }
+    .shop-chip-del { color: #FCA5A5; font-weight: 800; font-size: 12px; margin-left: 2px; }
+
+    .shop-chip-add { display: none; gap: 8px; margin-bottom: 14px; }
+    .shop-chip-add.open { display: flex; }
+
+    .shop-sec-title { font-size: 12px; font-weight: 800; color: #94A3B8; text-transform: uppercase; letter-spacing: 0.6px; margin: 14px 0 8px 2px; }
+    .shop-card { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 12px 14px; margin-bottom: 8px; display: flex; align-items: center; gap: 12px; cursor: pointer; transition: 0.15s; }
+    .shop-card:active { transform: scale(0.98); }
+    .shop-card.bought { opacity: 0.48; background: rgba(255,255,255,0.02); }
+    .shop-check { width: 22px; height: 22px; border-radius: 50%; border: 2px solid #64748B; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 12px; font-weight: 800; color: #fff; }
+    .shop-card.bought .shop-check { background: #16A34A; border-color: #16A34A; }
+    .shop-card.bought .shop-check::after { content: '✓'; }
+    .shop-text { flex: 1; font-size: 15px; font-weight: 600; color: #F8FAFC; word-break: break-word; }
+    .shop-card.bought .shop-text { text-decoration: line-through; color: #94A3B8; }
+    .shop-author { font-size: 10px; font-weight: 800; padding: 2px 7px; border-radius: 6px; flex-shrink: 0; }
+    .shop-author.nikolai { background: rgba(59, 130, 246, 0.22); color: #93C5FD; }
+    .shop-author.polly { background: rgba(236, 72, 153, 0.22); color: #F9A8D4; }
+    .shop-author.other { background: rgba(148, 163, 184, 0.2); color: #CBD5E1; }
+
+    .shop-bottom-bar { display: flex; gap: 8px; margin-top: 16px; }
+    .shop-act-btn { flex: 1; padding: 11px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.06); color: #E2E8F0; font-size: 13px; font-weight: 700; cursor: pointer; }
+    .shop-act-btn.clear { background: rgba(239, 68, 68, 0.18); border-color: rgba(239, 68, 68, 0.35); color: #FCA5A5; }
+ </style>
 </head>
 <body>
 
@@ -309,9 +343,9 @@
         <div class="grid-icon">💰</div>
         <div class="grid-label">Finance</div>
       </div>
-      <div class="grid-item bg-pink" onclick="openScreen('screen-dev', 'Smart Home')">
-        <div class="grid-icon">🏠</div>
-        <div class="grid-label">Smart Home</div>
+      <div class="grid-item" style="background: linear-gradient(135deg, #D97706, #FBBF24);" onclick="openScreen('screen-shopping')">
+        <div class="grid-icon">🛒</div>
+        <div class="grid-label">Shopping</div>
       </div>
       <div class="grid-item bg-teal" onclick="openScreen('screen-places')">
         <div class="grid-icon">📍</div>
@@ -732,8 +766,37 @@
       </div>
       <button class="wish-submit" style="background:#0D9488;" onclick="createCalEvent()">Save Event</button>
     </div>
-
     <div id="cal-events-list"></div>
+  </div>
+
+  <!-- SHOPPING SCREEN -->
+  <div id="screen-shopping" class="screen">
+    <div class="nav-header">
+      <button class="back-btn" onclick="openScreen('screen-dashboard')">←</button>
+      <h2>Shopping List</h2>
+    </div>
+
+    <div class="create-box">
+      <input type="text" id="shop-input" placeholder="Add items (comma separated)..." onkeypress="if(event.key==='Enter') addShoppingFromInput()">
+      <button style="background:#D97706;" onclick="addShoppingFromInput()">+</button>
+    </div>
+
+    <div class="shop-chips-hdr">
+      <span class="shop-chips-title">Quick Add</span>
+      <button class="shop-edit-btn" id="shop-edit-chips-btn" onclick="toggleShopChipEdit()">⚙️ Edit</button>
+    </div>
+    <div class="shop-chips-row" id="shop-chips-row"></div>
+    <div class="shop-chip-add" id="shop-chip-add-box">
+      <input type="text" id="shop-new-chip" class="wish-input" style="margin-bottom:0; flex:1;" placeholder="New quick item (e.g. 🍌 Бананы)..." onkeypress="if(event.key==='Enter') addShopChip()">
+      <button class="wish-submit" style="width:auto; padding:0 16px; margin-top:0; background:#F59E0B; color:#0B1120;" onclick="addShopChip()">Add</button>
+    </div>
+
+    <div id="shop-list-container"></div>
+
+    <div class="shop-bottom-bar">
+      <button class="shop-act-btn" id="shop-copy-btn" onclick="copyRemainingShopping(this)">📋 Copy Remaining</button>
+      <button class="shop-act-btn clear" id="shop-clear-btn" style="display:none;" onclick="clearBoughtShopping()">🧹 Clear Checked</button>
+    </div>
   </div>
   
   <!-- =========================================
@@ -839,7 +902,11 @@
       if (screenId === 'screen-calendar') {
         fetchCalendar();
       }
+      if (screenId === 'screen-shopping') {
+        fetchShopping();
+      }
     }
+  
 
     async function fetchAllData() {
       if (!currentAuthKey) { openAuthLock(); return; }
@@ -920,7 +987,8 @@
         !n.title.startsWith(FIN_PREFIX) &&
         !n.title.startsWith(PLACE_TRAVEL_PREFIX) &&
         !n.title.startsWith(PLACE_FOOD_PREFIX) &&
-        !n.title.startsWith(TASTE_PREFIX)
+        !n.title.startsWith(TASTE_PREFIX) &&
+        !n.title.startsWith('[SHOP_CHIPS]')                           
       );
 
       if (notes.length === 0) {
@@ -2670,6 +2738,36 @@
         await fetchCalendar();
       } catch (err) {}
     }
+  <!-- SHOPPING SCREEN -->
+  <div id="screen-shopping" class="screen">
+    <div class="nav-header">
+      <button class="back-btn" onclick="openScreen('screen-dashboard')">←</button>
+      <h2>Shopping List</h2>
+    </div>
+
+    <div class="create-box">
+      <input type="text" id="shop-input" placeholder="Add items (comma separated)..." onkeypress="if(event.key==='Enter') addShoppingFromInput()">
+      <button style="background:#D97706;" onclick="addShoppingFromInput()">+</button>
+    </div>
+
+    <div class="shop-chips-hdr">
+      <span class="shop-chips-title">Quick Add</span>
+      <button class="shop-edit-btn" id="shop-edit-chips-btn" onclick="toggleShopChipEdit()">⚙️ Edit</button>
+    </div>
+    <div class="shop-chips-row" id="shop-chips-row"></div>
+    <div class="shop-chip-add" id="shop-chip-add-box">
+      <input type="text" id="shop-new-chip" class="wish-input" style="margin-bottom:0; flex:1;" placeholder="New quick item (e.g. 🍌 Бананы)..." onkeypress="if(event.key==='Enter') addShopChip()">
+      <button class="wish-submit" style="width:auto; padding:0 16px; margin-top:0; background:#F59E0B; color:#0B1120;" onclick="addShopChip()">Add</button>
+    </div>
+
+    <div id="shop-list-container"></div>
+
+    <div class="shop-bottom-bar">
+      <button class="shop-act-btn" id="shop-copy-btn" onclick="copyRemainingShopping(this)">📋 Copy Remaining</button>
+      <button class="shop-act-btn clear" id="shop-clear-btn" style="display:none;" onclick="clearBoughtShopping()">🧹 Clear Checked</button>
+    </div>
+  </div>
+  
 </script>
 </body>
 </html>
