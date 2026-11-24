@@ -2652,35 +2652,6 @@
       }
     }
 
-    async function createCalEvent() {
-      const title = document.getElementById("cal-in-title").value.trim();
-      const start_date = document.getElementById("cal-in-start").value;
-      const end_date = document.getElementById("cal-in-end").value || start_date;
-      const event_time = document.getElementById("cal-in-time").value || "";
-      if (!title || !start_date) return;
-      if (end_date < start_date) { alert("End date cannot be earlier than start date."); return; }
-
-      try {
-        const res = await fetch(`${API_BASE}/api/calendar`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ title, start_date, end_date, event_time, category: calSelectedCat })
-        });
-        if (!res.ok) throw new Error("Save failed");
-        document.getElementById("cal-in-title").value = "";
-        document.getElementById("cal-in-end").value = "";
-        document.getElementById("cal-in-time").value = "";
-        document.getElementById("cal-add-form").classList.remove("open");
-        calSelectedDate = start_date;
-        const dt = parseLocalDate(start_date);
-        calCurYear = dt.getFullYear();
-        calCurMonth = dt.getMonth();
-        await fetchCalendar();
-      } catch (err) {
-        alert("Error saving event: " + err.message);
-      }
-    }
-
     async function markCalDone(id) {
       try {
         await fetch(`${API_BASE}/api/calendar/${id}`, {
