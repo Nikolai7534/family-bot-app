@@ -2739,35 +2739,226 @@
       } catch (err) {}
     }
  
-  /*-- SHOPPING SCREEN --*/
-  <div id="screen-shopping" class="screen">
-    <div class="nav-header">
-      <button class="back-btn" onclick="openScreen('screen-dashboard')">←</button>
-      <h2>Shopping List</h2>
-    </div>
+    /* --- SHOPPING MODULE --- */
+    const SHOP_CHIPS_TITLE = "[SHOP_CHIPS]";
+    const DEFAULT_SHOP_CHIPS = [
+      "🥛 Молоко", "🍫 Нутелла", "🥚 Яйца", "🧻 Бумага большая",
+      "🥕 Морковка", "🧴 Дезодорант", "🛍️ Пакеты", "🧻 Бумага"
+    ];
 
-    <div class="create-box">
-      <input type="text" id="shop-input" placeholder="Add items (comma separated)..." onkeypress="if(event.key==='Enter') addShoppingFromInput()">
-      <button style="background:#D97706;" onclick="addShoppingFromInput()">+</button>
-    </div>
+    let shopItems = [];
+    let shopChips = [...DEFAULT_SHOP_CHIPS];
+    let shopChipsNoteId = null;
+    let shopChipEditMode = false;
 
-    <div class="shop-chips-hdr">
-      <span class="shop-chips-title">Quick Add</span>
-      <button class="shop-edit-btn" id="shop-edit-chips-btn" onclick="toggleShopChipEdit()">⚙️ Edit</button>
-    </div>
-    <div class="shop-chips-row" id="shop-chips-row"></div>
-    <div class="shop-chip-add" id="shop-chip-add-box">
-      <input type="text" id="shop-new-chip" class="wish-input" style="margin-bottom:0; flex:1;" placeholder="New quick item (e.g. 🍌 Бананы)..." onkeypress="if(event.key==='Enter') addShopChip()">
-      <button class="wish-submit" style="width:auto; padding:0 16px; margin-top:0; background:#F59E0B; color:#0B1120;" onclick="addShopChip()">Add</button>
-    </div>
+    async function fetchShopping() {
+      if (!currentAuthKey) { openAuthLock(); return; }
+      try {
+        const [shopRes, notesRes] = await Promise.all([
+          fetch(`${API_BASE}/api/shopping`),
+          fetch(`${API_BASE}/api/notes`)
+        ]);
+        if (shopRes.status === 401 || notesRes.status === 401) { openAuthLock(); return; }
+        if (!shopRes.ok) throw new Error("Status: " + shopRes.status);
+        shopItems = await shopRes.json();
 
-    <div id="shop-list-container"></div>
+        if (notesRes.ok) {
+          const notes = await notesRes.json();
+          const chipNote = notes.find(n => n.title === SHOP_CHIPS_TITLE && n.is_shared);
+          if (chipNote) {
+            shopChipsNoteId = chipNote.id;
+            try {
+              const parsed = JSON.parse(chipNote.content);
+              if (Array.isArray(parsed)) shopChips = parsed;
+            } catch (e) {}
+          } else {
+            shopChipsNoteId = null;
+            shopChips = [...DEFAULT_SHOP_CHIPS];
+          }
+        }
+        renderShopping();
+      } catch (err) {
+        alert("Shopping Error: " + err.message);
+      }
+    }
 
-    <div class="shop-bottom-bar">
-      <button class="shop-act-btn" id="shop-copy-btn" onclick="copyRemainingShopping(this)">📋 Copy Remaining</button>
-      <button class="shop-act-btn clear" id="shop-clear-btn" style="display:none;" onclick="clearBoughtShopping()">🧹 Clear Checked</button>
-    </div>
-  </div>
+    async function saveShopChipsToDb() {
+      const payload = JSON.stringify(shopChips);
+      try {
+        if (shopChipsNoteId) {
+          await fetch(`${API_BASE}/api/notes/${shopChipsNoteId}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ content: payload })
+          });
+        } else {
+          await fetch(`${API_BASE}/api/notes`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ title: SHOP_CHIPS_TITLE, is_shared: true, content: payload })
+          });
+          await fetchShopping();
+        }
+      } catch (err) {}
+    }
+
+    function toggleShopChipEdit() {
+      shopChipEditMode = !shopChipEditMode;
+      document.getElementById("shop-edit-chips-btn").classList.toggle("active", shopChipEditMode);
+      document.getElementById("shop-edit-chips-btn").textContent = shopChipEditMode ? "✓ Done" : "⚙️ Edit";
+      document.getElementById("shop-chip-add-box").classList.toggle("open", shopChipEditMode);
+      renderShopChips();
+    }
+
+    async function addShopChip() {
+      const inp = document.getElementById("shop-new-chip");
+      const val = inp.value.trim();
+      if (!val) return;
+      if (!shopChips.includes(val)) {
+        shopChips.push(val);
+        inp.value = "";
+        renderShopChips();
+        await saveShopChipsToDb();
+      }
+    }
+
+    async function removeShopChip(idx) {
+      shopChips.splice(idx, 1);
+      renderShopChips();
+      await saveShopChipsToDb();
+    }
+
+    function renderShopChips() {
+      const row = document.getElementById("shop-chips-row");
+      if (!row) return;
+      const activeLower = new Set(
+        shopItems.filter(i => !i.is_bought).map(i => i.title.toLowerCase())
+      );
+
+      row.innerHTML = shopChips.map((chip, idx) => {
+        const cleanName = chip.replace(/^[^\p{L}\p{N}]+/u, "").trim().toLowerCase();
+        const inList = activeLower.has(chip.toLowerCase()) || activeLower.has(cleanName);
+        if (shopChipEditMode) {
+          return `<button type="button" class="shop-chip" onclick="removeShopChip(${idx})">${escapeHtml(chip)} <span class="shop-chip-del">✕</span></button>`;
+        }
+        return `<button type="button" class="shop-chip ${inList ? 'in-list' : ''}" onclick="addShoppingItem('${escapeHtml(chip).replace(/'/g, "\\'")}')">${escapeHtml(chip)}</button>`;
+      }).join("");
+    }
+
+    function renderShopping() {
+      renderShopChips();
+      const container = document.getElementById("shop-list-container");
+      const clearBtn = document.getElementById("shop-clear-btn");
+      container.innerHTML = "";
+
+      const active = shopItems.filter(i => !i.is_bought);
+      const bought = shopItems.filter(i => i.is_bought);
+
+      if (bought.length > 0) {
+        clearBtn.style.display = "block";
+        clearBtn.textContent = `🧹 Clear Checked (${bought.length})`;
+      } else {
+        clearBtn.style.display = "none";
+      }
+
+      if (active.length === 0 && bought.length === 0) {
+        container.innerHTML = `<div style="text-align:center; padding:34px; color:#64748B; font-size:14px;">🛒 Grocery list is empty!</div>`;
+        return;
+      }
+
+      if (active.length > 0) {
+        container.innerHTML += `<div class="shop-sec-title">Need to Order (${active.length})</div>`;
+        active.forEach(item => container.appendChild(buildShopCard(item)));
+      }
+
+      if (bought.length > 0) {
+        container.innerHTML += `<div class="shop-sec-title">In Cart (${bought.length})</div>`;
+        bought.forEach(item => container.appendChild(buildShopCard(item)));
+      }
+    }
+
+    function buildShopCard(item) {
+      const card = document.createElement("div");
+      card.className = `shop-card ${item.is_bought ? "bought" : ""}`;
+      card.onclick = () => toggleShoppingItem(item.id, item.is_bought ? 0 : 1);
+
+      const who = (item.added_by || "").trim();
+      const whoClass = who.toLowerCase() === "nikolai" ? "nikolai" : (who.toLowerCase() === "polly" ? "polly" : "other");
+      const authorHtml = who ? `<span class="shop-author ${whoClass}">${escapeHtml(who)}</span>` : "";
+
+      card.innerHTML = `
+        <div class="shop-check"></div>
+        <div class="shop-text">${escapeHtml(item.title)}</div>
+        ${authorHtml}
+        <button class="del-btn" onclick="deleteShoppingItem(event, ${item.id})">✕</button>
+      `;
+      return card;
+    }
+
+    async function addShoppingFromInput() {
+      const inp = document.getElementById("shop-input");
+      const text = inp.value.trim();
+      if (!text) return;
+      inp.value = "";
+      await addShoppingItem(text);
+    }
+
+    async function addShoppingItem(title) {
+      try {
+        const res = await fetch(`${API_BASE}/api/shopping`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ title })
+        });
+        if (!res.ok) throw new Error("Add failed");
+        await fetchShopping();
+      } catch (err) {
+        alert("Error adding item: " + err.message);
+      }
+    }
+
+    async function toggleShoppingItem(id, newState) {
+      const item = shopItems.find(i => i.id === id);
+      if (item) { item.is_bought = newState; renderShopping(); }
+      try {
+        await fetch(`${API_BASE}/api/shopping/${id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ is_bought: newState })
+        });
+      } catch (err) {}
+    }
+
+    async function deleteShoppingItem(e, id) {
+      e.stopPropagation();
+      try {
+        await fetch(`${API_BASE}/api/shopping/${id}`, { method: "DELETE" });
+        await fetchShopping();
+      } catch (err) {}
+    }
+
+    async function clearBoughtShopping() {
+      try {
+        await fetch(`${API_BASE}/api/shopping/clear-bought`, { method: "POST" });
+        await fetchShopping();
+      } catch (err) {}
+    }
+
+    function copyRemainingShopping(btn) {
+      const active = shopItems.filter(i => !i.is_bought);
+      if (active.length === 0) { alert("No remaining items to copy."); return; }
+      const text = active.map((i, idx) => `${idx + 1}. ${i.title}`).join("\n");
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      ta.remove();
+      const old = btn.textContent;
+      btn.textContent = "✓ Copied!";
+      btn.style.background = "rgba(22, 163, 74, 0.35)";
+      setTimeout(() => { btn.textContent = old; btn.style.background = ""; }, 1500);
+    }
   
 </script>
 </body>
