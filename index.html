@@ -248,6 +248,14 @@
     .cal-badge.today { background: rgba(245, 158, 11, 0.22); color: #FCD34D; }
     .cal-ev-btns { display: flex; gap: 6px; flex-shrink: 0; }
     .cal-done-btn { background: rgba(22, 163, 74, 0.2); border: 1px solid rgba(74, 222, 128, 0.35); color: #4ADE80; border-radius: 8px; padding: 7px 10px; font-size: 12px; font-weight: 800; cursor: pointer; }
+    /* CALENDAR MOVE MODAL */
+    .cal-move-btn { background: rgba(56, 189, 248, 0.18); border: 1px solid rgba(56, 189, 248, 0.35); color: #7DD3FC; border-radius: 8px; padding: 7px 9px; font-size: 13px; font-weight: 800; cursor: pointer; }
+    .cal-modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.72); z-index: 999; align-items: center; justify-content: center; padding: 16px; }
+    .cal-modal-bg.open { display: flex; }
+    .cal-modal-card { width: 100%; max-width: 380px; background: #131C31; border: 1px solid rgba(255,255,255,0.12); border-radius: 18px; padding: 18px; box-shadow: 0 20px 40px rgba(0,0,0,0.5); }
+    .cal-quick-row { display: flex; gap: 6px; margin: 10px 0 12px 0; }
+    .cal-quick-btn { flex: 1; padding: 8px 6px; border-radius: 10px; border: 1px solid rgba(56, 189, 248, 0.3); background: rgba(56, 189, 248, 0.12); color: #BAE6FD; font-size: 12px; font-weight: 700; cursor: pointer; }
+    .cal-quick-btn:active { transform: scale(0.96); }
  
     /* SHOPPING MODULE */
     .shop-chips-hdr { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
@@ -255,9 +263,8 @@
     .shop-edit-btn { background: rgba(255,255,255,0.08); border: none; color: #CBD5E1; font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 8px; cursor: pointer; }
     .shop-edit-btn.active { background: #F59E0B; color: #0B1120; }
 
-    .shop-chips-row { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 12px; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
-    .shop-chips-row::-webkit-scrollbar { display: none; }
-    .shop-chip { flex-shrink: 0; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.1); color: #F1F5F9; padding: 8px 12px; border-radius: 20px; font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: 0.15s; }
+    .shop-chips-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px; }
+    .shop-chip { background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.1); color: #F1F5F9; padding: 10px 6px; border-radius: 12px; font-size: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; text-align: center; gap: 4px; transition: 0.15s; line-height: 1.25; word-break: break-word; min-height: 40px; }
     .shop-chip:active { transform: scale(0.95); }
     .shop-chip.in-list { background: rgba(245, 158, 11, 0.22); border-color: rgba(245, 158, 11, 0.55); color: #FDE68A; }
     .shop-chip-del { color: #FCA5A5; font-weight: 800; font-size: 12px; margin-left: 2px; }
@@ -767,6 +774,38 @@
       <button class="wish-submit" style="background:#0D9488;" onclick="createCalEvent()">Save Event</button>
     </div>
     <div id="cal-events-list"></div>
+
+    <div class="cal-modal-bg" id="cal-move-modal" onclick="if(event.target===this) closeCalMove()">
+      <div class="cal-modal-card">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+          <div style="font-size:16px; font-weight:800; color:#fff;">🔄 Move Event</div>
+          <button class="del-btn" onclick="closeCalMove()">✕</button>
+        </div>
+        <div id="cal-move-title" style="font-size:14px; color:#94A3B8; margin-bottom:10px; font-weight:600;"></div>
+
+        <div class="cal-quick-row">
+          <button type="button" class="cal-quick-btn" onclick="calMoveQuick('tomorrow')">Tomorrow</button>
+          <button type="button" class="cal-quick-btn" onclick="calMoveQuick('sunday')">Next Sun</button>
+          <button type="button" class="cal-quick-btn" onclick="calMoveQuick('week')">+1 Week</button>
+        </div>
+
+        <div class="wish-row">
+          <div style="flex:1;">
+            <label class="cal-field-lbl">New Start (DD.MM)</label>
+            <input type="text" id="cal-move-start" class="wish-input" style="margin-bottom:0;" inputmode="decimal">
+          </div>
+          <div style="flex:1;">
+            <label class="cal-field-lbl">End (optional)</label>
+            <input type="text" id="cal-move-end" class="wish-input" style="margin-bottom:0;" inputmode="decimal">
+          </div>
+        </div>
+        <div style="margin-top:10px; margin-bottom:14px;">
+          <label class="cal-field-lbl">Time (optional — leave empty to remove)</label>
+          <input type="time" id="cal-move-time" class="wish-input" style="margin-bottom:0;">
+        </div>
+        <button class="wish-submit" style="background:#0284C7;" onclick="saveCalMove()">Save & Notify Chat</button>
+      </div>
+    </div>
   </div>
 
   <!-- SHOPPING SCREEN -->
@@ -2679,6 +2718,7 @@
             </div>
           </div>
           <div class="cal-ev-btns">
+            <button class="cal-move-btn" onclick="openCalMove(${p.id})">↻</button>
             <button class="cal-done-btn" onclick="markCalDone(${p.id})">✓</button>
             <button class="del-btn" onclick="deleteCalEvent(${p.id})">✕</button>
           </div>
@@ -2737,6 +2777,68 @@
         await fetch(`${API_BASE}/api/calendar/${id}`, { method: "DELETE" });
         await fetchCalendar();
       } catch (err) {}
+    }
+
+  let calMoveId = null;
+
+    function openCalMove(id) {
+      const p = calPlans.find(x => x.id === id);
+      if (!p) return;
+      calMoveId = id;
+      document.getElementById("cal-move-title").textContent = p.title;
+      document.getElementById("cal-move-start").value = isoToShortInput(p.start_date);
+      document.getElementById("cal-move-end").value = p.end_date !== p.start_date ? isoToShortInput(p.end_date) : "";
+      document.getElementById("cal-move-time").value = p.event_time || "";
+      document.getElementById("cal-move-modal").classList.add("open");
+    }
+
+    function closeCalMove() {
+      calMoveId = null;
+      document.getElementById("cal-move-modal").classList.remove("open");
+    }
+
+    function calMoveQuick(mode) {
+      const now = new Date();
+      let target = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      if (mode === "tomorrow") {
+        target.setDate(target.getDate() + 1);
+      } else if (mode === "sunday") {
+        const daysToSun = (7 - target.getDay()) % 7 || 7;
+        target.setDate(target.getDate() + daysToSun);
+      } else if (mode === "week") {
+        target.setDate(target.getDate() + 7);
+      }
+      document.getElementById("cal-move-start").value = isoToShortInput(fmtLocalDate(target));
+      document.getElementById("cal-move-end").value = "";
+    }
+
+    async function saveCalMove() {
+      if (!calMoveId) return;
+      const start_date = parseSmartDateInput(document.getElementById("cal-move-start").value);
+      const endRaw = document.getElementById("cal-move-end").value.trim();
+      const end_date = endRaw ? parseSmartDateInput(endRaw) : start_date;
+      const event_time = document.getElementById("cal-move-time").value || "";
+
+      if (!start_date) { alert("Invalid Start Date. Use DD.MM or DD.MM.YYYY"); return; }
+      if (endRaw && !end_date) { alert("Invalid End Date. Use DD.MM or DD.MM.YYYY"); return; }
+      if (end_date < start_date) { alert("End date cannot be earlier than start date."); return; }
+
+      try {
+        const res = await fetch(`${API_BASE}/api/calendar/${calMoveId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ start_date, end_date, event_time })
+        });
+        if (!res.ok) throw new Error("Update failed");
+        closeCalMove();
+        calSelectedDate = start_date;
+        const dt = parseLocalDate(start_date);
+        calCurYear = dt.getFullYear();
+        calCurMonth = dt.getMonth();
+        await fetchCalendar();
+      } catch (err) {
+        alert("Error moving event: " + err.message);
+      }
     }
  
     /* --- SHOPPING MODULE --- */
