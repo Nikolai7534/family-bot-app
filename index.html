@@ -289,7 +289,22 @@
     .shop-bottom-bar { display: flex; gap: 8px; margin-top: 16px; }
     .shop-act-btn { flex: 1; padding: 11px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.06); color: #E2E8F0; font-size: 13px; font-weight: 700; cursor: pointer; }
     .shop-act-btn.clear { background: rgba(239, 68, 68, 0.18); border-color: rgba(239, 68, 68, 0.35); color: #FCA5A5; }
- </style>
+
+  /* NOTES & TASKS PROGRESS + STACKED TITLE */
+    .card-header { position: relative; overflow: hidden; }
+    .card-prog-fill { position: absolute; left: 0; top: 0; bottom: 0; z-index: 0; pointer-events: none; transition: width 0.3s ease, background 0.3s ease; }
+    .card-prog-fill.progress { background: linear-gradient(90deg, rgba(245, 158, 11, 0.32), rgba(251, 191, 36, 0.22)); }
+    .card-prog-fill.done { background: linear-gradient(90deg, rgba(22, 163, 74, 0.34), rgba(34, 197, 94, 0.24)); }
+    .card-title-group { position: relative; z-index: 1; flex: 1; min-width: 0; }
+    .card-title { word-break: break-word; }
+    .card-header-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; margin-left: 8px; position: relative; z-index: 1; }
+    .prog-badge { font-size: 11px; font-weight: 800; padding: 3px 8px; border-radius: 8px; white-space: nowrap; }
+    .prog-badge.empty { background: rgba(148, 163, 184, 0.16); color: #94A3B8; }
+    .prog-badge.progress { background: rgba(245, 158, 11, 0.25); color: #FDE68A; border: 1px solid rgba(245, 158, 11, 0.45); }
+    .prog-badge.done { background: rgba(22, 163, 74, 0.28); color: #86EFAC; border: 1px solid rgba(34, 197, 94, 0.5); }
+    .task-title-stack { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; min-width: 0; }
+    
+  </style>
 </head>
 <body>
 
@@ -1035,10 +1050,13 @@
         return;
       }
 
+      notes.sort((a, b) => b.id - a.id);
+
       notes.forEach(note => {
         const card = document.createElement("div");
         card.className = "card";
         const items = parseJSON(note.content);
+        const prog = getFolderProgress(items);
 
         const isExpanded = expandedNotes[note.id] === true;
         const displayStyle = isExpanded ? 'block' : 'none';
@@ -1047,19 +1065,21 @@
         let itemsHtml = items.map((item, idx) => `
           <div class="list-item ${item.done ? 'done' : ''}" onclick="toggleNoteItem(${note.id}, ${idx})">
             <div class="checkbox"></div>
-            <span class="item-num">${idx + 1}.</span>
             <div class="item-text">${escapeHtml(item.text)}</div>
-            <button class="item-del-btn" onclick="deleteNoteItem(event, ${note.id}, ${idx})">✕</button>
           </div>
         `).join('');
 
         card.innerHTML = `
           <div class="card-header" onclick="toggleAccordion(${note.id})">
+            ${prog.fillHtml}
             <div class="card-title-group">
               <span class="chevron" id="chevron-${note.id}" style="transform: ${chevronTransform};">▼</span>
               <span class="card-title">${escapeHtml(note.title)}</span>
             </div>
-            <button class="del-btn" onclick="deleteItem(event, ${note.id})">Delete</button>
+            <div class="card-header-right">
+              ${prog.badgeHtml}
+              <button class="del-btn" onclick="deleteItem(event, ${note.id})">Delete</button>
+            </div>
           </div>
           <div class="card-body" id="note-body-${note.id}" style="display: ${displayStyle};">
             <div class="items-container">${itemsHtml}</div>
@@ -1067,15 +1087,35 @@
               <input type="text" id="add-input-${note.id}" placeholder="Add sub-item..." onkeypress="handleEnter(event, ${note.id})">
               <button class="add-btn" onclick="addNoteItem(${note.id})">+</button>
             </div>
-            <div class="note-footer-bar">
-              <button class="note-copy-btn" onclick="copyNote(event, ${note.id}, this)">📋 Copy Note</button>
-            </div>
           </div>
         `;
         container.appendChild(card);
       });
     }
 
+    function getFolderProgress(items) {
+      const total = items.length;
+      if (total === 0) return { fillHtml: "", badgeHtml: "" };
+      const done = items.filter(i => i.done).length;
+      const pct = Math.round((done / total) * 100);
+      if (done === total) {
+        return {
+          fillHtml: `<div class="card-prog-fill done" style="width: 100%;"></div>`,
+          badgeHtml: `<span class="prog-badge done">✓ Done</span>`
+        };
+      }
+      if (done > 0) {
+        return {
+          fillHtml: `<div class="card-prog-fill progress" style="width: ${pct}%;"></div>`,
+          badgeHtml: `<span class="prog-badge progress">${done}/${total}</span>`
+        };
+      }
+      return {
+        fillHtml: "",
+        badgeHtml: `<span class="prog-badge empty">0/${total}</span>`
+      };
+    }
+  
     async function createTopic() {
       const input = document.getElementById("new-topic");
       const title = input.value.trim();
@@ -1333,7 +1373,9 @@
       if (!container) return;
       container.innerHTML = "";
 
-      const tasks = allData.filter(n => n.title.startsWith(TASK_NIKOLAI_PREFIX) || n.title.startsWith(TASK_POLLY_PREFIX));
+      const tasks = allData
+        .filter(n => n.title.startsWith(TASK_NIKOLAI_PREFIX) || n.title.startsWith(TASK_POLLY_PREFIX))
+        .sort((a, b) => b.id - a.id);
 
       if (tasks.length === 0) {
         container.innerHTML = `<div style="text-align:center; padding: 40px; color: #64748B;">No tasks yet</div>`;
@@ -1342,13 +1384,14 @@
 
       tasks.forEach(task => {
         const isNikolai = task.title.startsWith(TASK_NIKOLAI_PREFIX);
-        const badgeText = isNikolai ? "Nikolai task :" : "Polly task :";
+        const badgeText = isNikolai ? "Nikolai:" : "Polly:";
         const badgeClass = isNikolai ? "badge-nikolai" : "badge-polly";
         const realTitle = task.title.replace(TASK_NIKOLAI_PREFIX, "").replace(TASK_POLLY_PREFIX, "").trim();
 
         const card = document.createElement("div");
         card.className = "card";
         const items = parseJSON(task.content);
+        const prog = getFolderProgress(items);
 
         const isExpanded = expandedNotes[task.id] === true;
         const displayStyle = isExpanded ? 'block' : 'none';
@@ -1363,12 +1406,18 @@
 
         card.innerHTML = `
           <div class="card-header" onclick="toggleAccordion(${task.id})">
+            ${prog.fillHtml}
             <div class="card-title-group">
               <span class="chevron" id="chevron-${task.id}" style="transform: ${chevronTransform};">▼</span>
-              <span class="task-badge ${badgeClass}">${badgeText}</span>
-              <span class="card-title">${escapeHtml(realTitle)}</span>
+              <div class="task-title-stack">
+                <span class="task-badge ${badgeClass}">${badgeText}</span>
+                <span class="card-title">${escapeHtml(realTitle)}</span>
+              </div>
             </div>
-            <button class="del-btn" onclick="deleteItem(event, ${task.id})">Delete</button>
+            <div class="card-header-right">
+              ${prog.badgeHtml}
+              <button class="del-btn" onclick="deleteItem(event, ${task.id})">Delete</button>
+            </div>
           </div>
           <div class="card-body" id="note-body-${task.id}" style="display: ${displayStyle};">
             <div class="items-container">${itemsHtml}</div>
