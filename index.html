@@ -1043,7 +1043,9 @@
         !n.title.startsWith(PLACE_TRAVEL_PREFIX) &&
         !n.title.startsWith(PLACE_FOOD_PREFIX) &&
         !n.title.startsWith(TASTE_PREFIX) &&
-        !n.title.startsWith('[SHOP_CHIPS]')                           
+        !n.title.startsWith('[SHOP_CHIPS]') &&
+        !n.title.startsWith('[UI_SETTINGS]')
+          
       );
 
       if (notes.length === 0) {
@@ -3113,5 +3115,6 @@
     }
   
 </script>
+  <script src="dashboard.js?v=1"></script>
 </body>
 </html>
