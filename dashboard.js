@@ -1174,6 +1174,8 @@
     }
   };
 
+  let handlingPopState = false;
+
   function syncBackButton() {
     const bb = window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.BackButton;
     if (!bb) return;
@@ -1188,29 +1190,44 @@
     }
   }
 
-  function initBackButton() {
-    const bb = window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.BackButton;
-    if (!bb || bb._hhBound) return;
-    bb._hhBound = true;
-    bb.onClick(function () {
-      const quickModal = document.getElementById("hh-quick-modal");
-      if (quickModal && quickModal.classList.contains("open")) {
-        window.hhDash.closeQuickModal();
-        return;
-      }
-      const calMoveModal = document.getElementById("cal-move-modal");
-      if (calMoveModal && calMoveModal.classList.contains("open") && typeof closeCalMove === "function") {
-        closeCalMove();
-        syncBackButton();
-        return;
-      }
-      const activeScreen = document.querySelector(".screen.active");
-      if (activeScreen && activeScreen.id !== "screen-dashboard") {
-        if (typeof openScreen === "function") openScreen("screen-dashboard");
-        return;
-      }
+  function handleBackAction(fromPopState) {
+    const quickModal = document.getElementById("hh-quick-modal");
+    if (quickModal && quickModal.classList.contains("open")) {
+      window.hhDash.closeQuickModal();
+      return true;
+    }
+    const calMoveModal = document.getElementById("cal-move-modal");
+    if (calMoveModal && calMoveModal.classList.contains("open") && typeof closeCalMove === "function") {
+      closeCalMove();
       syncBackButton();
-    });
+      return true;
+    }
+    const activeScreen = document.querySelector(".screen.active");
+    if (activeScreen && activeScreen.id !== "screen-dashboard") {
+      if (fromPopState) handlingPopState = true;
+      if (typeof openScreen === "function") openScreen("screen-dashboard");
+      handlingPopState = false;
+      return true;
+    }
+    syncBackButton();
+    return false;
+  }
+
+  function initBackButton() {
+    const tgApp = window.Telegram && window.Telegram.WebApp;
+    const bb = tgApp && tgApp.BackButton;
+    if (bb && !bb._hhBound) {
+      bb._hhBound = true;
+      bb.onClick(function () {
+        handleBackAction(false);
+      });
+    }
+    if (!window._hhPopBound) {
+      window._hhPopBound = true;
+      window.addEventListener("popstate", function () {
+        handleBackAction(true);
+      });
+    }
     syncBackButton();
   }
 
@@ -1222,6 +1239,12 @@
         if (screenId === "screen-dashboard") {
           renderDashboard();
           syncFromServer();
+        } else if (!handlingPopState) {
+          try {
+            if (!history.state || history.state.hhScreen !== screenId) {
+              history.pushState({ hhScreen: screenId }, "");
+            }
+          } catch (e) {}
         }
         syncBackButton();
       };
