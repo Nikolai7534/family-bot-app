@@ -33,6 +33,14 @@
     { id: "tastings", label: "Tastings", icon: "🥃", screen: "screen-tastings", color: "bronze",  size: "1x1", visible: true }
   ];
 
+  const START_SCREENS = [
+    { id: "screen-dashboard", label: "🏠 Dashboard" },
+    { id: "screen-shopping",  label: "🛒 Shopping" },
+    { id: "screen-calendar",  label: "📅 Calendar" },
+    { id: "screen-tasks",     label: "✅ Tasks" },
+    { id: "screen-notes",     label: "📝 Notes" }
+  ];
+
   let uiSettings = null;
   let settingsNoteId = null;
   let openColorPickerId = null;
@@ -40,6 +48,9 @@
   let quickModalType = null;
   let quickTaskOwner = "Nikolai";
   let quickNoteShared = true;
+  let searchQuery = "";
+  let searchResultsCache = [];
+  let startScreenApplied = false;
 
   function esc(str) {
     const d = document.createElement("div");
@@ -64,6 +75,7 @@
       version: 1,
       mode: "classic",
       hideFinance: false,
+      startScreen: "screen-dashboard",
       modules: DEFAULT_MODULES.map(m => ({ ...m }))
     };
   }
@@ -73,6 +85,7 @@
     if (!raw || typeof raw !== "object") return base;
     const mode = raw.mode === "bento" ? "bento" : "classic";
     const hideFinance = !!raw.hideFinance;
+    const startScreen = START_SCREENS.some(s => s.id === raw.startScreen) ? raw.startScreen : "screen-dashboard";
     const incoming = Array.isArray(raw.modules) ? raw.modules : [];
     const byId = new Map(DEFAULT_MODULES.map(m => [m.id, m]));
     const merged = [];
@@ -95,7 +108,7 @@
       if (!seen.has(def.id)) merged.push({ ...def });
     });
 
-    return { version: 1, mode, hideFinance, modules: merged };
+    return { version: 1, mode, hideFinance, startScreen, modules: merged };
   }
 
   function loadLocalSettings() {
@@ -151,13 +164,30 @@
       .hh-icon-pill:active { transform: scale(0.92); }
       .welcome-card .logout-pill { display: none !important; }
 
-      /* BENTO HEADER & GRID */
-      .bento-header { display: flex; justify-content: space-between; align-items: center; padding: 6px 2px 16px 2px; }
+      /* BENTO HEADER, SEARCH & GRID */
+      .bento-header { display: flex; justify-content: space-between; align-items: center; padding: 6px 2px 12px 2px; }
       .bento-date { font-size: 12px; font-weight: 700; color: #94A3B8; text-transform: capitalize; margin-bottom: 2px; }
       .bento-greet { font-size: 24px; font-weight: 800; color: #F8FAFC; margin: 0; letter-spacing: -0.3px; }
       .bento-hdr-btns { display: flex; gap: 8px; }
       .bento-hdr-btn { width: 38px; height: 38px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.06); color: #E2E8F0; font-size: 16px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
       .bento-hdr-btn:active { transform: scale(0.92); }
+
+      .bento-search-wrap { position: relative; margin-bottom: 14px; }
+      .bento-search-ico { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); font-size: 14px; opacity: 0.65; pointer-events: none; }
+      .bento-search-input { width: 100%; box-sizing: border-box; background: rgba(19, 28, 49, 0.92); border: 1px solid rgba(255,255,255,0.1); border-radius: 14px; padding: 11px 36px 11px 36px; color: #F8FAFC; font-size: 14px; outline: none; transition: 0.15s; }
+      .bento-search-input:focus { border-color: rgba(96, 165, 250, 0.55); background: rgba(24, 36, 62, 0.98); }
+      .bento-search-input::placeholder { color: #64748B; }
+      .bento-search-clear { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); width: 22px; height: 22px; border-radius: 50%; border: none; background: rgba(255,255,255,0.12); color: #CBD5E1; font-size: 11px; font-weight: 800; cursor: pointer; display: none; align-items: center; justify-content: center; }
+
+      .bento-search-results { display: none; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+      .bento-search-results.open { display: flex; }
+      .bento-sr-item { background: rgba(19, 28, 49, 0.95); border: 1px solid rgba(255,255,255,0.09); border-radius: 13px; padding: 10px 12px; display: flex; align-items: center; gap: 10px; cursor: pointer; transition: 0.12s; }
+      .bento-sr-item:active { transform: scale(0.98); }
+      .bento-sr-ico { width: 32px; height: 32px; border-radius: 10px; background: rgba(255,255,255,0.07); display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+      .bento-sr-body { flex: 1; min-width: 0; }
+      .bento-sr-title { font-size: 14px; font-weight: 700; color: #F8FAFC; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .bento-sr-sub { font-size: 11px; color: #94A3B8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+      .bento-sr-tag { font-size: 10px; font-weight: 800; padding: 3px 7px; border-radius: 7px; background: rgba(59, 130, 246, 0.16); color: #93C5FD; flex-shrink: 0; }
 
       .bento-grid { display: grid; grid-template-columns: repeat(2, 1fr); grid-auto-flow: dense; gap: 11px; padding-bottom: 18px; }
       .bento-card { background: rgba(19, 28, 49, 0.92); border: 1px solid rgba(255,255,255,0.08); border-radius: 18px; padding: 14px; cursor: pointer; display: flex; flex-direction: column; justify-content: space-between; min-height: 116px; transition: 0.15s; position: relative; overflow: hidden; }
@@ -173,12 +203,16 @@
       .bento-preview { font-size: 12px; color: #94A3B8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-height: 16px; }
 
       /* SETTINGS SCREEN */
-      .set-mode-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 18px; }
+      .set-mode-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
       .set-mode-card { background: rgba(255,255,255,0.05); border: 2px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 14px 10px; text-align: center; cursor: pointer; transition: 0.15s; }
       .set-mode-card.active { background: rgba(37, 99, 235, 0.22); border-color: #60A5FA; }
       .set-mode-ico { font-size: 26px; margin-bottom: 6px; }
       .set-mode-name { font-size: 14px; font-weight: 800; color: #F8FAFC; }
       .set-mode-sub { font-size: 11px; color: #94A3B8; margin-top: 2px; }
+
+      .set-start-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+      .set-start-chip { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #CBD5E1; border-radius: 10px; padding: 7px 10px; font-size: 12px; font-weight: 700; cursor: pointer; }
+      .set-start-chip.active { background: rgba(37, 99, 235, 0.28); border-color: #60A5FA; color: #fff; }
 
       .set-sec-lbl { font-size: 11px; font-weight: 800; color: #94A3B8; text-transform: uppercase; letter-spacing: 0.6px; margin: 14px 0 8px 2px; }
       .set-mod-card { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 10px 12px; margin-bottom: 8px; }
@@ -237,6 +271,8 @@
         </div>
         <div class="set-sec-lbl">Dashboard Layout</div>
         <div class="set-mode-row" id="set-mode-row"></div>
+        <div class="set-sec-lbl">Start Screen on Launch</div>
+        <div class="set-start-row" id="set-start-row"></div>
         <div class="set-sec-lbl">Modules (Color • Order • Bento Size • Show)</div>
         <div id="set-modules-list"></div>
         <button type="button" class="set-reset-btn" onclick="window.hhDash.resetSettings()">↺ Reset to Default</button>
@@ -370,6 +406,103 @@
     };
   }
 
+  function runGlobalSearch(rawQuery) {
+    const q = (rawQuery || "").trim().toLowerCase();
+    if (!q) return [];
+    const results = [];
+
+    (liveCache.shopping || []).filter(i => !i.is_bought).forEach(i => {
+      if (String(i.title || "").toLowerCase().includes(q)) {
+        results.push({ icon: "🛒", tag: "Shopping", title: i.title, sub: i.added_by ? `Added by ${i.added_by}` : "Grocery list", screen: "screen-shopping" });
+      }
+    });
+
+    (liveCache.calendar || []).filter(p => !p.is_done).forEach(p => {
+      const hay = `${p.title || ""} ${p.start_date || ""}`.toLowerCase();
+      if (hay.includes(q)) {
+        const parts = (p.start_date || "").split("-");
+        const dStr = parts.length === 3 ? `${parts[2]}.${parts[1]}.${parts[0]}` : p.start_date;
+        results.push({ icon: "📅", tag: "Calendar", title: p.title, sub: dStr + (p.event_time ? ` • ${p.event_time}` : ""), screen: "screen-calendar" });
+      }
+    });
+
+    (liveCache.notes || []).forEach(n => {
+      const t = n.title || "";
+      if (t.startsWith("[SHOP_CHIPS]") || t.startsWith(SETTINGS_TITLE) || t.startsWith("[FIN]")) return;
+
+      let icon = "📝", tag = "Notes", screen = "screen-notes", clean = t, isFolder = true, noteShared = !!n.is_shared;
+      if (t.startsWith("[TASK_N]") || t.startsWith("[TASK_P]")) {
+        icon = "✅"; tag = "Tasks"; screen = "screen-tasks"; clean = t.replace(/^\[TASK_[NP]\]\s*/, "");
+      } else if (t.startsWith("[ORDER]")) {
+        icon = "📦"; tag = "To Order"; screen = "screen-order"; clean = t.replace(/^\[ORDER\]\s*/, ""); isFolder = false;
+      } else if (t.startsWith("[WISH")) {
+        icon = "🎁"; tag = "Wishlist"; screen = "screen-wishlist"; clean = t.replace(/^\[WISH[_NP]*\]\s*/, ""); isFolder = false;
+      } else if (t.startsWith("[PLACE_")) {
+        icon = "📍"; tag = "Places"; screen = "screen-places"; clean = t.replace(/^\[PLACE_[TF]\]\s*/, ""); isFolder = false;
+      } else if (t.startsWith("[TASTE]")) {
+        icon = "🥃"; tag = "Tastings"; screen = "screen-tastings"; clean = t.replace(/^\[TASTE\]\s*/, ""); isFolder = false;
+      }
+
+      let matchedSub = "";
+      if (isFolder) {
+        try {
+          const items = JSON.parse(n.content);
+          if (Array.isArray(items)) {
+            const hit = items.find(it => String(it.text || "").toLowerCase().includes(q));
+            if (hit) matchedSub = `• ${hit.text}`;
+          }
+        } catch (e) {}
+      }
+
+      if (clean.toLowerCase().includes(q) || matchedSub) {
+        results.push({
+          icon, tag, title: clean,
+          sub: matchedSub || (screen === "screen-notes" ? (noteShared ? "Shared note" : "Personal note") : tag),
+          screen, noteId: isFolder ? n.id : null, noteShared
+        });
+      }
+    });
+
+    return results.slice(0, 15);
+  }
+
+  function renderSearchResultsOnly() {
+    const box = document.getElementById("hh-bento-search-results");
+    const grid = document.getElementById("hh-bento-grid");
+    const clr = document.getElementById("hh-bento-search-clear");
+    if (!box || !grid) return;
+
+    const q = searchQuery.trim();
+    if (clr) clr.style.display = q ? "flex" : "none";
+
+    if (!q) {
+      box.classList.remove("open");
+      box.innerHTML = "";
+      grid.style.display = "grid";
+      return;
+    }
+
+    searchResultsCache = runGlobalSearch(q);
+    grid.style.display = "none";
+    box.classList.add("open");
+
+    if (searchResultsCache.length === 0) {
+      box.innerHTML = `<div style="text-align:center; padding:26px; color:#64748B; font-size:13px;">Nothing found for "${esc(q)}"</div>`;
+      return;
+    }
+
+    box.innerHTML = searchResultsCache.map((r, idx) => `
+      <div class="bento-sr-item" onclick="window.hhDash.openSearchResult(${idx})">
+        <div class="bento-sr-ico">${r.icon}</div>
+        <div class="bento-sr-body">
+          <div class="bento-sr-title">${esc(r.title)}</div>
+          <div class="bento-sr-sub">${esc(r.sub)}</div>
+        </div>
+        <span class="bento-sr-tag">${esc(r.tag)}</span>
+      </div>
+    `).join("");
+  }
+
   function renderDashboard() {
     const dash = document.getElementById("screen-dashboard");
     if (!dash || !uiSettings) return;
@@ -423,8 +556,15 @@
               <button type="button" class="bento-hdr-btn" title="Switch / Lock" onclick="openAuthLock()">🔒</button>
             </div>
           </div>
-          <div class="bento-grid">${cardsHtml}</div>
+          <div class="bento-search-wrap">
+            <span class="bento-search-ico">🔍</span>
+            <input type="text" id="hh-bento-search" class="bento-search-input" value="${esc(searchQuery)}" placeholder="Search notes, tasks, shopping, calendar..." oninput="window.hhDash.onSearchInput(this.value)">
+            <button type="button" id="hh-bento-search-clear" class="bento-search-clear" onclick="window.hhDash.clearSearch()">✕</button>
+          </div>
+          <div id="hh-bento-search-results" class="bento-search-results"></div>
+          <div id="hh-bento-grid" class="bento-grid">${cardsHtml}</div>
         `;
+        renderSearchResultsOnly();
       }
     } else {
       if (welcome) welcome.style.display = "";
@@ -446,6 +586,7 @@
 
   function renderSettingsScreen() {
     const modeRow = document.getElementById("set-mode-row");
+    const startRow = document.getElementById("set-start-row");
     const list = document.getElementById("set-modules-list");
     if (!modeRow || !list) return;
 
@@ -458,9 +599,15 @@
       <div class="set-mode-card ${uiSettings.mode === "bento" ? "active" : ""}" onclick="window.hhDash.setMode('bento')">
         <div class="set-mode-ico">✨</div>
         <div class="set-mode-name">Bento Smart</div>
-        <div class="set-mode-sub">Live previews & quick +</div>
+        <div class="set-mode-sub">Live previews & search</div>
       </div>
     `;
+
+    if (startRow) {
+      startRow.innerHTML = START_SCREENS.map(s => `
+        <button type="button" class="set-start-chip ${uiSettings.startScreen === s.id ? "active" : ""}" onclick="window.hhDash.setStartScreen('${s.id}')">${s.label}</button>
+      `).join("");
+    }
 
     list.innerHTML = uiSettings.modules.map((m, idx) => {
       const col = getColorObj(m.color);
@@ -510,11 +657,29 @@
       }
       if (sRes.ok) liveCache.shopping = await sRes.json();
       if (cRes.ok) liveCache.calendar = await cRes.json();
-      renderDashboard();
+
+      const searchEl = document.getElementById("hh-bento-search");
+      if (searchEl && document.activeElement === searchEl) {
+        renderSearchResultsOnly();
+      } else {
+        renderDashboard();
+      }
+
       if (document.getElementById("screen-settings")?.classList.contains("active")) {
         renderSettingsScreen();
       }
     } catch (e) {}
+  }
+
+  function applyStartScreenOnce() {
+    if (startScreenApplied) return;
+    if (typeof currentAuthKey === "undefined" || !currentAuthKey) return;
+    startScreenApplied = true;
+    if (uiSettings && uiSettings.startScreen && uiSettings.startScreen !== "screen-dashboard") {
+      if (typeof openScreen === "function") {
+        openScreen(uiSettings.startScreen);
+      }
+    }
   }
 
   function renderQuickToggles() {
@@ -550,6 +715,11 @@
       renderDashboard();
       saveDbSettings();
       if (mode === "bento") syncFromServer();
+    },
+    setStartScreen: function (screenId) {
+      uiSettings.startScreen = screenId;
+      renderSettingsScreen();
+      saveDbSettings();
     },
     togglePalette: function (id) {
       openColorPickerId = (openColorPickerId === id) ? null : id;
@@ -603,6 +773,28 @@
       uiSettings.hideFinance = !uiSettings.hideFinance;
       renderDashboard();
       saveDbSettings();
+    },
+    onSearchInput: function (val) {
+      searchQuery = val;
+      renderSearchResultsOnly();
+    },
+    clearSearch: function () {
+      searchQuery = "";
+      const inp = document.getElementById("hh-bento-search");
+      if (inp) inp.value = "";
+      renderSearchResultsOnly();
+    },
+    openSearchResult: function (idx) {
+      const r = searchResultsCache[idx];
+      if (!r) return;
+      searchQuery = "";
+      if (r.noteId && typeof expandedNotes !== "undefined") {
+        expandedNotes[r.noteId] = true;
+      }
+      if (r.screen === "screen-notes" && typeof setNotesTab === "function") {
+        setNotesTab(!!r.noteShared);
+      }
+      openScreen(r.screen);
     },
     openQuickModal: function (type) {
       quickModalType = type;
@@ -682,6 +874,7 @@
         const overlay = document.getElementById("auth-overlay");
         if (!overlay || overlay.style.display === "none") {
           settingsNoteId = null;
+          searchQuery = "";
           uiSettings = loadLocalSettings();
           renderDashboard();
           syncFromServer();
@@ -697,4 +890,5 @@
   hookAppLifecycle();
   renderDashboard();
   syncFromServer();
+  applyStartScreenOnce();
 })();
