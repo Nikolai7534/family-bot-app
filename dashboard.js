@@ -1,6 +1,8 @@
 (function () {
   const SETTINGS_TITLE = "[UI_SETTINGS]";
   const STORAGE_PREFIX = "hh_ui_settings_v1_";
+  const WEATHER_CACHE_PREFIX = "hh_weather_cache_v1_";
+  const WEATHER_TTL_MS = 15 * 60 * 1000;
 
   const UI_COLORS = [
     { id: "blue",    bg: "linear-gradient(135deg, #2563EB, #60A5FA)", accent: "#60A5FA", soft: "rgba(59, 130, 246, 0.18)" },
@@ -41,10 +43,24 @@
     { id: "screen-notes",     label: "📝 Notes" }
   ];
 
+  const WEATHER_CITIES = [
+    { id: "karmiel",   name: "Karmiel",    lat: 32.9199, lon: 35.2901 },
+    { id: "haifa",     name: "Haifa",      lat: 32.7940, lon: 34.9896 },
+    { id: "tel_aviv",  name: "Tel Aviv",   lat: 32.0853, lon: 34.7818 },
+    { id: "jerusalem", name: "Jerusalem",  lat: 31.7683, lon: 35.2137 },
+    { id: "nahariya",  name: "Nahariya",   lat: 33.0059, lon: 35.0941 },
+    { id: "tiberias",  name: "Tiberias",   lat: 32.7922, lon: 35.5312 },
+    { id: "netanya",   name: "Netanya",    lat: 32.3215, lon: 34.8532 },
+    { id: "ashdod",    name: "Ashdod",     lat: 31.8044, lon: 34.6553 },
+    { id: "beer_sheva",name: "Be'er Sheva",lat: 31.2530, lon: 34.7915 },
+    { id: "eilat",     name: "Eilat",      lat: 29.5577, lon: 34.9519 }
+  ];
+
   let uiSettings = null;
   let settingsNoteId = null;
   let openColorPickerId = null;
   let liveCache = { notes: [], shopping: [], calendar: [] };
+  let weatherData = {};
   let quickModalType = null;
   let quickTaskOwner = "Nikolai";
   let quickNoteShared = true;
@@ -66,8 +82,33 @@
     return typeof userName !== "undefined" ? userName : (localStorage.getItem("hh_uname") || "User");
   }
 
+  function getTimeGreeting() {
+    const h = new Date().getHours();
+    if (h >= 5 && h < 12) return "Good morning";
+    if (h >= 12 && h < 18) return "Good afternoon";
+    if (h >= 18 && h < 23) return "Good evening";
+    return "Good night";
+  }
+
   function getColorObj(id) {
     return UI_COLORS.find(c => c.id === id) || UI_COLORS[0];
+  }
+
+  function getCityObj(id) {
+    return WEATHER_CITIES.find(c => c.id === id) || null;
+  }
+
+  function weatherCodeToIcon(code) {
+    if (code === 0) return "☀️";
+    if (code <= 2) return "⛅";
+    if (code === 3) return "☁️";
+    if (code <= 48) return "🌫️";
+    if (code <= 57) return "🌦️";
+    if (code <= 67) return "🌧️";
+    if (code <= 77) return "❄️";
+    if (code <= 82) return "🌧️";
+    if (code >= 95) return "⛈️";
+    return "🌤️";
   }
 
   function getDefaultSettings() {
@@ -76,6 +117,9 @@
       mode: "classic",
       hideFinance: false,
       startScreen: "screen-dashboard",
+      showSmartBar: true,
+      weatherCity1: "karmiel",
+      weatherCity2: "none",
       modules: DEFAULT_MODULES.map(m => ({ ...m }))
     };
   }
@@ -86,6 +130,10 @@
     const mode = raw.mode === "bento" ? "bento" : "classic";
     const hideFinance = !!raw.hideFinance;
     const startScreen = START_SCREENS.some(s => s.id === raw.startScreen) ? raw.startScreen : "screen-dashboard";
+    const showSmartBar = raw.showSmartBar !== false;
+    const weatherCity1 = (raw.weatherCity1 === "none" || getCityObj(raw.weatherCity1)) ? raw.weatherCity1 : "karmiel";
+    const weatherCity2 = (raw.weatherCity2 === "none" || getCityObj(raw.weatherCity2)) ? raw.weatherCity2 : "none";
+
     const incoming = Array.isArray(raw.modules) ? raw.modules : [];
     const byId = new Map(DEFAULT_MODULES.map(m => [m.id, m]));
     const merged = [];
@@ -108,7 +156,7 @@
       if (!seen.has(def.id)) merged.push({ ...def });
     });
 
-    return { version: 1, mode, hideFinance, startScreen, modules: merged };
+    return { version: 1, mode, hideFinance, startScreen, showSmartBar, weatherCity1, weatherCity2, modules: merged };
   }
 
   function loadLocalSettings() {
@@ -154,23 +202,94 @@
     } catch (e) {}
   }
 
+  async function fetchCityWeather(cityId) {
+    const city = getCityObj(cityId);
+    if (!city) return null;
+
+    const now = Date.now();
+    if (weatherData[cityId] && (now - weatherData[cityId].ts) < WEATHER_TTL_MS) {
+      return weatherData[cityId];
+    }
+
+    try {
+      const cached = localStorage.getItem(WEATHER_CACHE_PREFIX + cityId);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed && (now - parsed.ts) < WEATHER_TTL_MS) {
+          weatherData[cityId] = parsed;
+          return parsed;
+        }
+      }
+    } catch (e) {}
+
+    try {
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${city.lat}&longitude=${city.lon}¤t=temperature_2m,weather_code&timezone=auto`;
+      const res = await fetch(url);
+      if (!res.ok) return null;
+      const data = await res.json();
+      if (data && data.current) {
+        const entry = {
+          temp: Math.round(data.current.temperature_2m),
+          icon: weatherCodeToIcon(data.current.weather_code),
+          name: city.name,
+          ts: now
+        };
+        weatherData[cityId] = entry;
+        try { localStorage.setItem(WEATHER_CACHE_PREFIX + cityId, JSON.stringify(entry)); } catch (e) {}
+        return entry;
+      }
+    } catch (e) {}
+    return null;
+  }
+
+  async function refreshWeatherForSettings() {
+    if (!uiSettings || !uiSettings.showSmartBar) return;
+    const ids = [];
+    if (uiSettings.weatherCity1 && uiSettings.weatherCity1 !== "none") ids.push(uiSettings.weatherCity1);
+    if (uiSettings.weatherCity2 && uiSettings.weatherCity2 !== "none" && uiSettings.weatherCity2 !== uiSettings.weatherCity1) {
+      ids.push(uiSettings.weatherCity2);
+    }
+    if (ids.length === 0) return;
+
+    await Promise.all(ids.map(fetchCityWeather));
+    const searchEl = document.getElementById("hh-bento-search");
+    if (!searchEl || document.activeElement !== searchEl) {
+      renderDashboard();
+    }
+  }
+
   function injectStyles() {
     if (document.getElementById("hh-dash-styles")) return;
     const style = document.createElement("style");
     style.id = "hh-dash-styles";
     style.textContent = `
+      /* SMOOTH SCREEN TRANSITIONS */
+      @keyframes hhScreenIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to   { opacity: 1; transform: translateY(0); }
+      }
+      .screen.active { animation: hhScreenIn 0.22s cubic-bezier(0.22, 1, 0.36, 1); }
+
       .hh-top-actions { position: absolute; top: 12px; right: 12px; display: flex; gap: 8px; z-index: 5; }
       .hh-icon-pill { width: 34px; height: 34px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.2); background: rgba(11, 17, 32, 0.42); color: #fff; font-size: 15px; display: flex; align-items: center; justify-content: center; cursor: pointer; backdrop-filter: blur(6px); transition: 0.15s; }
       .hh-icon-pill:active { transform: scale(0.92); }
       .welcome-card .logout-pill { display: none !important; }
 
-      /* BENTO HEADER, SEARCH & GRID */
-      .bento-header { display: flex; justify-content: space-between; align-items: center; padding: 6px 2px 12px 2px; }
+      /* BENTO HEADER, SMART DAY BAR, SEARCH & GRID */
+      .bento-header { display: flex; justify-content: space-between; align-items: center; padding: 6px 2px 10px 2px; }
       .bento-date { font-size: 12px; font-weight: 700; color: #94A3B8; text-transform: capitalize; margin-bottom: 2px; }
-      .bento-greet { font-size: 24px; font-weight: 800; color: #F8FAFC; margin: 0; letter-spacing: -0.3px; }
+      .bento-greet { font-size: 22px; font-weight: 800; color: #F8FAFC; margin: 0; letter-spacing: -0.3px; }
       .bento-hdr-btns { display: flex; gap: 8px; }
-      .bento-hdr-btn { width: 38px; height: 38px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.06); color: #E2E8F0; font-size: 16px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+      .bento-hdr-btn { width: 38px; height: 38px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.06); color: #E2E8F0; font-size: 16px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.15s; }
       .bento-hdr-btn:active { transform: scale(0.92); }
+
+      .bento-smart-bar { background: linear-gradient(135deg, rgba(30, 58, 138, 0.36), rgba(19, 28, 49, 0.92)); border: 1px solid rgba(96, 165, 250, 0.22); border-radius: 15px; padding: 10px 12px; margin-bottom: 12px; display: flex; flex-direction: column; gap: 7px; }
+      .bento-weather-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+      .bento-weather-chip { display: inline-flex; align-items: center; gap: 5px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; padding: 4px 9px; font-size: 12px; font-weight: 700; color: #F1F5F9; }
+      .bento-weather-temp { color: #7DD3FC; font-weight: 800; }
+      .bento-focus-line { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px; color: #CBD5E1; cursor: pointer; }
+      .bento-focus-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
+      .bento-focus-meta { font-size: 11px; color: #94A3B8; white-space: nowrap; flex-shrink: 0; }
 
       .bento-search-wrap { position: relative; margin-bottom: 14px; }
       .bento-search-ico { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); font-size: 14px; opacity: 0.65; pointer-events: none; }
@@ -190,7 +309,7 @@
       .bento-sr-tag { font-size: 10px; font-weight: 800; padding: 3px 7px; border-radius: 7px; background: rgba(59, 130, 246, 0.16); color: #93C5FD; flex-shrink: 0; }
 
       .bento-grid { display: grid; grid-template-columns: repeat(2, 1fr); grid-auto-flow: dense; gap: 11px; padding-bottom: 18px; }
-      .bento-card { background: rgba(19, 28, 49, 0.92); border: 1px solid rgba(255,255,255,0.08); border-radius: 18px; padding: 14px; cursor: pointer; display: flex; flex-direction: column; justify-content: space-between; min-height: 116px; transition: 0.15s; position: relative; overflow: hidden; }
+      .bento-card { background: rgba(19, 28, 49, 0.92); border: 1px solid rgba(255,255,255,0.08); border-radius: 18px; padding: 14px; cursor: pointer; display: flex; flex-direction: column; justify-content: space-between; min-height: 116px; transition: transform 0.15s ease, border-color 0.2s ease; position: relative; overflow: hidden; }
       .bento-card:active { transform: scale(0.97); }
       .bento-card.wide { grid-column: span 2; min-height: 102px; }
       .bento-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
@@ -214,6 +333,12 @@
       .set-start-chip { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #CBD5E1; border-radius: 10px; padding: 7px 10px; font-size: 12px; font-weight: 700; cursor: pointer; }
       .set-start-chip.active { background: rgba(37, 99, 235, 0.28); border-color: #60A5FA; color: #fff; }
 
+      .set-weather-box { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 12px; margin-bottom: 14px; }
+      .set-weather-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+      .set-weather-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.08); }
+      .set-select-lbl { font-size: 11px; color: #94A3B8; font-weight: 700; margin-bottom: 4px; display: block; }
+      .set-select { width: 100%; background: #0B1120; border: 1px solid rgba(255,255,255,0.14); color: #F8FAFC; border-radius: 10px; padding: 8px 10px; font-size: 13px; font-weight: 600; outline: none; }
+
       .set-sec-lbl { font-size: 11px; font-weight: 800; color: #94A3B8; text-transform: uppercase; letter-spacing: 0.6px; margin: 14px 0 8px 2px; }
       .set-mod-card { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 10px 12px; margin-bottom: 8px; }
       .set-mod-card.hidden-mod { opacity: 0.48; }
@@ -229,7 +354,7 @@
 
       /* QUICK ADD MODAL */
       .hh-qmodal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.72); z-index: 1000; align-items: center; justify-content: center; padding: 16px; }
-      .hh-qmodal-bg.open { display: flex; }
+      .hh-qmodal-bg.open { display: flex; animation: hhScreenIn 0.18s ease; }
       .hh-qmodal-card { width: 100%; max-width: 360px; background: #131C31; border: 1px solid rgba(255,255,255,0.12); border-radius: 18px; padding: 18px; }
       .hh-qtoggle-row { display: flex; gap: 8px; margin-bottom: 12px; }
       .hh-qtoggle-btn { flex: 1; padding: 9px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.05); color: #94A3B8; font-size: 13px; font-weight: 700; cursor: pointer; }
@@ -271,6 +396,8 @@
         </div>
         <div class="set-sec-lbl">Dashboard Layout</div>
         <div class="set-mode-row" id="set-mode-row"></div>
+        <div class="set-sec-lbl">Smart Day Bar & Weather (Bento)</div>
+        <div id="set-weather-box"></div>
         <div class="set-sec-lbl">Start Screen on Launch</div>
         <div class="set-start-row" id="set-start-row"></div>
         <div class="set-sec-lbl">Modules (Color • Order • Bento Size • Show)</div>
@@ -352,20 +479,25 @@
 
     let calBadge = "Clear";
     let calPreview = "No upcoming events";
+    let smartFocus = "✨ Clear schedule today";
     if (todayEvents.length > 0) {
       const ev = todayEvents[0];
       calBadge = `Today (${todayEvents.length})`;
       calPreview = (ev.event_time ? `${ev.event_time} • ` : "") + ev.title;
+      smartFocus = `📅 Today: ${calPreview}`;
     } else if (futureEvents.length > 0) {
       const ev = futureEvents[0];
       const parts = ev.start_date.split("-");
       calBadge = `${parts[2]}.${parts[1]}`;
       calPreview = (ev.event_time ? `${ev.event_time} • ` : "") + ev.title;
+      smartFocus = `✨ Free today • Next ${parts[2]}.${parts[1]}: ${ev.title}`;
     }
 
     const finExp = computeMonthlyExpense(finNotes);
 
     return {
+      smartFocus,
+      smartMeta: `${tasks.length} tasks • ${activeShop.length} shop`,
       tasks: {
         badge: tasks.length ? `${tasks.length} active` : "Empty",
         preview: tasks.length ? tasks[0].title.replace(/^\[TASK_[NP]\]\s*/, "") : "All tasks done",
@@ -404,6 +536,39 @@
         preview: tastings.length ? tastings[0].title.replace(/^\[TASTE\]\s*/, "") : "No tastings yet"
       }
     };
+  }
+
+  function buildSmartBarHtml(stats) {
+    if (!uiSettings.showSmartBar) return "";
+
+    const cityIds = [];
+    if (uiSettings.weatherCity1 && uiSettings.weatherCity1 !== "none") cityIds.push(uiSettings.weatherCity1);
+    if (uiSettings.weatherCity2 && uiSettings.weatherCity2 !== "none" && uiSettings.weatherCity2 !== uiSettings.weatherCity1) {
+      cityIds.push(uiSettings.weatherCity2);
+    }
+
+    let weatherRowHtml = "";
+    if (cityIds.length > 0) {
+      const chips = cityIds.map(id => {
+        const city = getCityObj(id);
+        const w = weatherData[id];
+        if (w) {
+          return `<span class="bento-weather-chip">${w.icon} <span class="bento-weather-temp">${w.temp}°</span> ${esc(w.name)}</span>`;
+        }
+        return `<span class="bento-weather-chip">🌤️ ${esc(city ? city.name : id)}...</span>`;
+      }).join("");
+      weatherRowHtml = `<div class="bento-weather-row">${chips}</div>`;
+    }
+
+    return `
+      <div class="bento-smart-bar">
+        ${weatherRowHtml}
+        <div class="bento-focus-line" onclick="openScreen('screen-calendar')">
+          <span class="bento-focus-text">${esc(stats.smartFocus)}</span>
+          <span class="bento-focus-meta">${esc(stats.smartMeta)}</span>
+        </div>
+      </div>
+    `;
   }
 
   function runGlobalSearch(rawQuery) {
@@ -549,13 +714,14 @@
           <div class="bento-header">
             <div>
               <div class="bento-date">${esc(dateStr)}</div>
-              <h2 class="bento-greet">Hello, ${esc(getUname())}!</h2>
+              <h2 class="bento-greet">${esc(getTimeGreeting())}, ${esc(getUname())}!</h2>
             </div>
             <div class="bento-hdr-btns">
               <button type="button" class="bento-hdr-btn" title="Settings" onclick="window.hhDash.openSettings()">⚙️</button>
               <button type="button" class="bento-hdr-btn" title="Switch / Lock" onclick="openAuthLock()">🔒</button>
             </div>
           </div>
+          ${buildSmartBarHtml(stats)}
           <div class="bento-search-wrap">
             <span class="bento-search-ico">🔍</span>
             <input type="text" id="hh-bento-search" class="bento-search-input" value="${esc(searchQuery)}" placeholder="Search notes, tasks, shopping, calendar..." oninput="window.hhDash.onSearchInput(this.value)">
@@ -586,6 +752,7 @@
 
   function renderSettingsScreen() {
     const modeRow = document.getElementById("set-mode-row");
+    const weatherBox = document.getElementById("set-weather-box");
     const startRow = document.getElementById("set-start-row");
     const list = document.getElementById("set-modules-list");
     if (!modeRow || !list) return;
@@ -599,9 +766,46 @@
       <div class="set-mode-card ${uiSettings.mode === "bento" ? "active" : ""}" onclick="window.hhDash.setMode('bento')">
         <div class="set-mode-ico">✨</div>
         <div class="set-mode-name">Bento Smart</div>
-        <div class="set-mode-sub">Live previews & search</div>
+        <div class="set-mode-sub">Live previews & weather</div>
       </div>
     `;
+
+    if (weatherBox) {
+      const cityOptions = (selectedId, allowOffLabel) => {
+        const offOpt = `<option value="none" ${selectedId === "none" ? "selected" : ""}>${allowOffLabel}</option>`;
+        return offOpt + WEATHER_CITIES.map(c =>
+          `<option value="${c.id}" ${selectedId === c.id ? "selected" : ""}>${esc(c.name)}</option>`
+        ).join("");
+      };
+
+      weatherBox.innerHTML = `
+        <div class="set-weather-box">
+          <div class="set-weather-top">
+            <div>
+              <div style="font-size:14px; font-weight:700; color:#F8FAFC;">🌤️ Smart Day Bar</div>
+              <div style="font-size:11px; color:#94A3B8;">Weather (1 or 2 cities) + today's focus</div>
+            </div>
+            <button type="button" class="set-ctrl-btn ${uiSettings.showSmartBar ? "active" : ""}" onclick="window.hhDash.toggleSmartBar()">${uiSettings.showSmartBar ? "ON" : "OFF"}</button>
+          </div>
+          ${uiSettings.showSmartBar ? `
+            <div class="set-weather-grid">
+              <div>
+                <label class="set-select-lbl">City 1</label>
+                <select class="set-select" onchange="window.hhDash.setWeatherCity(1, this.value)">
+                  ${cityOptions(uiSettings.weatherCity1, "Off (no weather)")}
+                </select>
+              </div>
+              <div>
+                <label class="set-select-lbl">City 2 (optional)</label>
+                <select class="set-select" onchange="window.hhDash.setWeatherCity(2, this.value)">
+                  ${cityOptions(uiSettings.weatherCity2, "Off (1 city only)")}
+                </select>
+              </div>
+            </div>
+          ` : ""}
+        </div>
+      `;
+    }
 
     if (startRow) {
       startRow.innerHTML = START_SCREENS.map(s => `
@@ -668,6 +872,7 @@
       if (document.getElementById("screen-settings")?.classList.contains("active")) {
         renderSettingsScreen();
       }
+      refreshWeatherForSettings();
     } catch (e) {}
   }
 
@@ -715,6 +920,21 @@
       renderDashboard();
       saveDbSettings();
       if (mode === "bento") syncFromServer();
+    },
+    toggleSmartBar: function () {
+      uiSettings.showSmartBar = !uiSettings.showSmartBar;
+      renderSettingsScreen();
+      renderDashboard();
+      saveDbSettings();
+      if (uiSettings.showSmartBar) refreshWeatherForSettings();
+    },
+    setWeatherCity: function (slot, cityId) {
+      if (slot === 1) uiSettings.weatherCity1 = cityId;
+      else uiSettings.weatherCity2 = cityId;
+      renderSettingsScreen();
+      renderDashboard();
+      saveDbSettings();
+      refreshWeatherForSettings();
     },
     setStartScreen: function (screenId) {
       uiSettings.startScreen = screenId;
@@ -768,6 +988,7 @@
       renderSettingsScreen();
       renderDashboard();
       saveDbSettings();
+      refreshWeatherForSettings();
     },
     toggleFinanceHide: function () {
       uiSettings.hideFinance = !uiSettings.hideFinance;
@@ -890,5 +1111,6 @@
   hookAppLifecycle();
   renderDashboard();
   syncFromServer();
+  refreshWeatherForSettings();
   applyStartScreenOnce();
 })();
