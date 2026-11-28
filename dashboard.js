@@ -1,7 +1,7 @@
 (function () {
   const SETTINGS_TITLE = "[UI_SETTINGS]";
   const STORAGE_PREFIX = "hh_ui_settings_v1_";
-  const WEATHER_CACHE_PREFIX = "hh_weather_cache_v1_";
+  const WEATHER_CACHE_PREFIX = "hh_weather_cache_v2_";
   const WEATHER_TTL_MS = 15 * 60 * 1000;
 
   const UI_COLORS = [
@@ -98,17 +98,17 @@
     return WEATHER_CITIES.find(c => c.id === id) || null;
   }
 
-  function weatherCodeToIcon(code) {
-    if (code === 0) return "☀️";
-    if (code <= 2) return "⛅";
-    if (code === 3) return "☁️";
-    if (code <= 48) return "🌫️";
-    if (code <= 57) return "🌦️";
-    if (code <= 67) return "🌧️";
-    if (code <= 77) return "❄️";
-    if (code <= 82) return "🌧️";
-    if (code >= 95) return "⛈️";
-    return "🌤️";
+  function weatherCodeInfo(code) {
+    if (code === 0) return { icon: "☀️", desc: "Clear" };
+    if (code <= 2) return { icon: "⛅", desc: "Partly cloudy" };
+    if (code === 3) return { icon: "☁️", desc: "Cloudy" };
+    if (code <= 48) return { icon: "🌫️", desc: "Fog" };
+    if (code <= 57) return { icon: "🌦️", desc: "Drizzle" };
+    if (code <= 67) return { icon: "🌧️", desc: "Rain" };
+    if (code <= 77) return { icon: "❄️", desc: "Snow" };
+    if (code <= 82) return { icon: "🌧️", desc: "Showers" };
+    if (code >= 95) return { icon: "⛈️", desc: "Storm" };
+    return { icon: "🌤️", desc: "Fair" };
   }
 
   function getDefaultSettings() {
@@ -224,13 +224,25 @@
 
     try {
       const url = `https://api.open-meteo.com/v1/forecast?latitude=${city.lat}&longitude=${city.lon}¤t=temperature_2m,weather_code&timezone=auto`;
-      const res = await fetch(url);
-      if (!res.ok) return null;
-      const data = await res.json();
+      const data = await new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open("GET", url, true);
+        xhr.timeout = 8000;
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            try { resolve(JSON.parse(xhr.responseText)); } catch (e) { reject(e); }
+          } else reject(new Error("HTTP " + xhr.status));
+        };
+        xhr.onerror = () => reject(new Error("Network error"));
+        xhr.ontimeout = () => reject(new Error("Timeout"));
+        xhr.send();
+      });
       if (data && data.current) {
+        const info = weatherCodeInfo(data.current.weather_code);
         const entry = {
           temp: Math.round(data.current.temperature_2m),
-          icon: weatherCodeToIcon(data.current.weather_code),
+          icon: info.icon,
+          desc: info.desc,
           name: city.name,
           ts: now
         };
@@ -287,10 +299,16 @@
       .bento-weather-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
       .bento-weather-chip { display: inline-flex; align-items: center; gap: 5px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; padding: 4px 9px; font-size: 12px; font-weight: 700; color: #F1F5F9; }
       .bento-weather-temp { color: #7DD3FC; font-weight: 800; }
-      .bento-focus-line { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px; color: #CBD5E1; cursor: pointer; }
-      .bento-focus-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
+      @keyframes hhTicker {
+        0%, 12% { transform: translateX(0); }
+        100%    { transform: translateX(-50%); }
+      }
+      .bento-focus-line { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 12px; color: #CBD5E1; cursor: pointer; }
+      .bento-focus-viewport { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; mask-image: linear-gradient(90deg, transparent, #000 4%, #000 94%, transparent); -webkit-mask-image: linear-gradient(90deg, transparent, #000 4%, #000 94%, transparent); }
+      .bento-focus-track { display: inline-block; font-weight: 600; }
+      .bento-focus-track.scrolling { animation: hhTicker 12s linear infinite; }
       .bento-focus-meta { font-size: 11px; color: #94A3B8; white-space: nowrap; flex-shrink: 0; }
-
+      
       .bento-search-wrap { position: relative; margin-bottom: 14px; }
       .bento-search-ico { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); font-size: 14px; opacity: 0.65; pointer-events: none; }
       .bento-search-input { width: 100%; box-sizing: border-box; background: rgba(19, 28, 49, 0.92); border: 1px solid rgba(255,255,255,0.1); border-radius: 14px; padding: 11px 36px 11px 36px; color: #F8FAFC; font-size: 14px; outline: none; transition: 0.15s; }
@@ -553,18 +571,26 @@
         const city = getCityObj(id);
         const w = weatherData[id];
         if (w) {
-          return `<span class="bento-weather-chip">${w.icon} <span class="bento-weather-temp">${w.temp}°</span> ${esc(w.name)}</span>`;
+          return `<span class="bento-weather-chip">${w.icon} <span class="bento-weather-temp">${w.temp}°</span> ${esc(w.desc)} · ${esc(w.name)}</span>`;
         }
         return `<span class="bento-weather-chip">🌤️ ${esc(city ? city.name : id)}...</span>`;
       }).join("");
       weatherRowHtml = `<div class="bento-weather-row">${chips}</div>`;
     }
 
+    const focusText = stats.smartFocus || "";
+    const isLong = focusText.length > 26;
+    const trackContent = isLong
+      ? `${esc(focusText)}   •   ${esc(focusText)}   •   `
+      : esc(focusText);
+
     return `
       <div class="bento-smart-bar">
         ${weatherRowHtml}
         <div class="bento-focus-line" onclick="openScreen('screen-calendar')">
-          <span class="bento-focus-text">${esc(stats.smartFocus)}</span>
+          <div class="bento-focus-viewport">
+            <span class="bento-focus-track ${isLong ? "scrolling" : ""}">${trackContent}</span>
+          </div>
           <span class="bento-focus-meta">${esc(stats.smartMeta)}</span>
         </div>
       </div>
