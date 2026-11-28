@@ -32,7 +32,8 @@
     { id: "finance",  label: "Finance",  icon: "💰", screen: "screen-finance",  color: "cyan",    size: "1x1", visible: true },
     { id: "notes",    label: "Notes",    icon: "📝", screen: "screen-notes",    color: "blue",    size: "1x1", visible: true },
     { id: "places",   label: "Places",   icon: "📍", screen: "screen-places",   color: "indigo",  size: "1x1", visible: true },
-    { id: "tastings", label: "Tastings", icon: "🥃", screen: "screen-tastings", color: "bronze",  size: "1x1", visible: true }
+    { id: "tastings", label: "Tastings", icon: "🥃", screen: "screen-tastings", color: "bronze",  size: "1x1", visible: true },
+    { id: "media",    label: "Watchlist", icon: "🎬", screen: "screen-media",   color: "rose",    size: "1x1", visible: true }
   ];
 
   const START_SCREENS = [
@@ -40,7 +41,8 @@
     { id: "screen-shopping",  label: "🛒 Shopping" },
     { id: "screen-calendar",  label: "📅 Calendar" },
     { id: "screen-tasks",     label: "✅ Tasks" },
-    { id: "screen-notes",     label: "📝 Notes" }
+    { id: "screen-notes",     label: "📝 Notes" },
+    { id: "screen-media",     label: "🎬 Watchlist" }
   ];
 
   const WEATHER_CITIES = [
@@ -532,10 +534,25 @@
     const finNotes = notes.filter(n => n.title.startsWith("[FIN]"));
     const places = notes.filter(n => n.title.startsWith("[PLACE_T]") || n.title.startsWith("[PLACE_F]")).sort((a, b) => b.id - a.id);
     const tastings = notes.filter(n => n.title.startsWith("[TASTE]")).sort((a, b) => b.id - a.id);
+    const mediaList = notes.filter(n => n.title.startsWith("[MEDIA]")).sort((a, b) => b.id - a.id);
+    const activeMedia = mediaList.filter(n => {
+      try { return !(JSON.parse(n.content) || {}).watched; } catch (e) { return true; }
+    });
+    let mediaPreview = "Nothing to watch";
+    if (activeMedia.length > 0) {
+      const top = activeMedia[0];
+      const topName = top.title.replace(/^\[MEDIA\]\s*/, "");
+      let meta = {};
+      try { meta = JSON.parse(top.content) || {}; } catch (e) {}
+      mediaPreview = meta.type === "series"
+        ? `${topName} • S${meta.season || 1} E${meta.episode || 1}`
+        : topName;
+    }
     const plainNotes = notes.filter(n =>
       !n.title.startsWith("[WISH") && !n.title.startsWith("[ORDER]") &&
       !n.title.startsWith("[TASK_") && !n.title.startsWith("[FIN]") &&
       !n.title.startsWith("[PLACE_") && !n.title.startsWith("[TASTE]") &&
+      !n.title.startsWith("[MEDIA]") &&
       !n.title.startsWith("[SHOP_CHIPS]") && !n.title.startsWith(SETTINGS_TITLE)
     ).sort((a, b) => b.id - a.id);
 
@@ -600,6 +617,10 @@
       tastings: {
         badge: tastings.length ? `${tastings.length} drinks` : "Empty",
         preview: tastings.length ? tastings[0].title.replace(/^\[TASTE\]\s*/, "") : "No tastings yet"
+      },
+      media: {
+        badge: activeMedia.length ? `${activeMedia.length} to watch` : "Empty",
+        preview: mediaPreview
       }
     };
   }
@@ -680,6 +701,8 @@
         icon = "📍"; tag = "Places"; screen = "screen-places"; clean = t.replace(/^\[PLACE_[TF]\]\s*/, ""); isFolder = false;
       } else if (t.startsWith("[TASTE]")) {
         icon = "🥃"; tag = "Tastings"; screen = "screen-tastings"; clean = t.replace(/^\[TASTE\]\s*/, ""); isFolder = false;
+      } else if (t.startsWith("[MEDIA]")) {
+        icon = "🎬"; tag = "Watchlist"; screen = "screen-media"; clean = t.replace(/^\[MEDIA\]\s*/, ""); isFolder = false;
       }
 
       let matchedSub = "";
