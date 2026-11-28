@@ -1124,11 +1124,13 @@
       inp.placeholder = phs[type] || "...";
       renderQuickToggles();
       document.getElementById("hh-quick-modal").classList.add("open");
+      syncBackButton();
       setTimeout(() => inp.focus(), 60);
     },
     closeQuickModal: function () {
       quickModalType = null;
       document.getElementById("hh-quick-modal").classList.remove("open");
+      syncBackButton();
     },
     setQuickTaskOwner: function (who) {
       quickTaskOwner = who;
@@ -1172,6 +1174,46 @@
     }
   };
 
+  function syncBackButton() {
+    const bb = window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.BackButton;
+    if (!bb) return;
+    const activeScreen = document.querySelector(".screen.active");
+    const isDash = !activeScreen || activeScreen.id === "screen-dashboard";
+    const quickOpen = document.getElementById("hh-quick-modal")?.classList.contains("open");
+    const calMoveOpen = document.getElementById("cal-move-modal")?.classList.contains("open");
+    if (!isDash || quickOpen || calMoveOpen) {
+      bb.show();
+    } else {
+      bb.hide();
+    }
+  }
+
+  function initBackButton() {
+    const bb = window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.BackButton;
+    if (!bb || bb._hhBound) return;
+    bb._hhBound = true;
+    bb.onClick(function () {
+      const quickModal = document.getElementById("hh-quick-modal");
+      if (quickModal && quickModal.classList.contains("open")) {
+        window.hhDash.closeQuickModal();
+        return;
+      }
+      const calMoveModal = document.getElementById("cal-move-modal");
+      if (calMoveModal && calMoveModal.classList.contains("open") && typeof closeCalMove === "function") {
+        closeCalMove();
+        syncBackButton();
+        return;
+      }
+      const activeScreen = document.querySelector(".screen.active");
+      if (activeScreen && activeScreen.id !== "screen-dashboard") {
+        if (typeof openScreen === "function") openScreen("screen-dashboard");
+        return;
+      }
+      syncBackButton();
+    });
+    syncBackButton();
+  }
+
   function hookAppLifecycle() {
     if (typeof window.openScreen === "function" && !window.openScreen._hhWrapped) {
       const origOpen = window.openScreen;
@@ -1181,6 +1223,7 @@
           renderDashboard();
           syncFromServer();
         }
+        syncBackButton();
       };
       window.openScreen._hhWrapped = true;
     }
@@ -1196,6 +1239,7 @@
           uiSettings = loadLocalSettings();
           renderDashboard();
           syncFromServer();
+          syncBackButton();
         }
       };
       window.submitAppLogin._hhWrapped = true;
@@ -1210,4 +1254,5 @@
   syncFromServer();
   refreshWeatherForSettings();
   applyStartScreenOnce();
+  initBackButton();
 })();
