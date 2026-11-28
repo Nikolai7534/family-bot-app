@@ -1124,12 +1124,23 @@
       inp.placeholder = phs[type] || "...";
       renderQuickToggles();
       document.getElementById("hh-quick-modal").classList.add("open");
+      if (!modalPushedHistory) {
+        try { history.pushState({ hhModal: "quick" }, ""); modalPushedHistory = true; } catch (e) {}
+      }
       syncBackButton();
       setTimeout(() => inp.focus(), 60);
     },
-    closeQuickModal: function () {
+    closeQuickModal: function (fromPopState) {
       quickModalType = null;
       document.getElementById("hh-quick-modal").classList.remove("open");
+      if (fromPopState) {
+        modalPushedHistory = false;
+      } else if (modalPushedHistory) {
+        modalPushedHistory = false;
+        handlingPopState = true;
+        try { history.back(); } catch (e) {}
+        setTimeout(() => { handlingPopState = false; }, 100);
+      }
       syncBackButton();
     },
     setQuickTaskOwner: function (who) {
@@ -1175,7 +1186,8 @@
   };
 
   let handlingPopState = false;
-
+  let modalPushedHistory = false;
+  
   function syncBackButton() {
     const bb = window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.BackButton;
     if (!bb) return;
@@ -1191,9 +1203,10 @@
   }
 
   function handleBackAction(fromPopState) {
+    if (fromPopState && handlingPopState) return true;
     const quickModal = document.getElementById("hh-quick-modal");
     if (quickModal && quickModal.classList.contains("open")) {
-      window.hhDash.closeQuickModal();
+      window.hhDash.closeQuickModal(fromPopState);
       return true;
     }
     const calMoveModal = document.getElementById("cal-move-modal");
