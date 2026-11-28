@@ -202,12 +202,12 @@
     } catch (e) {}
   }
 
-  async function fetchCityWeather(cityId) {
+ async function fetchCityWeather(cityId) {
     const city = getCityObj(cityId);
     if (!city) return null;
 
     const now = Date.now();
-    if (weatherData[cityId] && (now - weatherData[cityId].ts) < WEATHER_TTL_MS) {
+    if (weatherData[cityId] && typeof weatherData[cityId].temp === "number" && (now - weatherData[cityId].ts) < WEATHER_TTL_MS) {
       return weatherData[cityId];
     }
 
@@ -215,32 +215,51 @@
       const cached = localStorage.getItem(WEATHER_CACHE_PREFIX + cityId);
       if (cached) {
         const parsed = JSON.parse(cached);
-        if (parsed && (now - parsed.ts) < WEATHER_TTL_MS) {
+        if (parsed && typeof parsed.temp === "number" && (now - parsed.ts) < WEATHER_TTL_MS) {
           weatherData[cityId] = parsed;
           return parsed;
         }
       }
     } catch (e) {}
 
-    try {
-      const url = `https://api.open-meteo.com/v1/forecast?latitude=${city.lat}&longitude=${city.lon}¤t=temperature_2m,weather_code&timezone=auto`;
-      const data = await new Promise((resolve, reject) => {
+    function xhrJson(url) {
+      return new Promise((resolve, reject) => {
         const xhr = new XMLHttpRequest();
         xhr.open("GET", url, true);
-        xhr.timeout = 8000;
+        xhr.timeout = 10000;
         xhr.onload = () => {
           if (xhr.status >= 200 && xhr.status < 300) {
-            try { resolve(JSON.parse(xhr.responseText)); } catch (e) { reject(e); }
+            try { resolve(JSON.parse(xhr.responseText)); } catch (e) { reject(new Error("JSON")); }
           } else reject(new Error("HTTP " + xhr.status));
         };
-        xhr.onerror = () => reject(new Error("Network error"));
+        xhr.onerror = () => reject(new Error("Net"));
         xhr.ontimeout = () => reject(new Error("Timeout"));
         xhr.send();
       });
-      if (data && data.current) {
-        const info = weatherCodeInfo(data.current.weather_code);
+    }
+
+    function codeInfo(code) {
+      const c = Number(code);
+      if (c === 0) return { icon: "☀️", desc: "Clear" };
+      if (c <= 2) return { icon: "⛅", desc: "Partly cloudy" };
+      if (c === 3) return { icon: "☁️", desc: "Cloudy" };
+      if (c <= 48) return { icon: "🌫️", desc: "Fog" };
+      if (c <= 57) return { icon: "🌦️", desc: "Drizzle" };
+      if (c <= 67) return { icon: "🌧️", desc: "Rain" };
+      if (c <= 77) return { icon: "❄️", desc: "Snow" };
+      if (c <= 82) return { icon: "🌧️", desc: "Showers" };
+      if (c >= 95) return { icon: "⛈️", desc: "Storm" };
+      return { icon: "🌤️", desc: "Fair" };
+    }
+
+    let lastErr = "Err";
+    try {
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${city.lat}&longitude=${city.lon}¤t_weather=true`;
+      const data = await xhrJson(url);
+      if (data && data.current_weather) {
+        const info = codeInfo(data.current_weather.weathercode);
         const entry = {
-          temp: Math.round(data.current.temperature_2m),
+          temp: Math.round(data.current_weather.temperature),
           icon: info.icon,
           desc: info.desc,
           name: city.name,
@@ -250,7 +269,36 @@
         try { localStorage.setItem(WEATHER_CACHE_PREFIX + cityId, JSON.stringify(entry)); } catch (e) {}
         return entry;
       }
-    } catch (e) {}
+    } catch (e) {
+      lastErr = e.message || "OM err";
+    }
+
+    try {
+      const data = await xhrJson(`https://wttr.in/${encodeURIComponent(city.name)}?format=j1`);
+      const cur = data && data.current_condition && data.current_condition[0];
+      if (cur) {
+        const desc = (cur.weatherDesc && cur.weatherDesc[0] && cur.weatherDesc[0].value) || "Fair";
+        const low = desc.toLowerCase();
+        const icon = low.includes("rain") || low.includes("shower") ? "🌧️" :
+                     low.includes("storm") || low.includes("thunder") ? "⛈️" :
+                     low.includes("cloud") || low.includes("overcast") ? "☁️" :
+                     low.includes("fog") || low.includes("mist") ? "🌫️" : "☀️";
+        const entry = {
+          temp: Math.round(Number(cur.temp_C)),
+          icon,
+          desc,
+          name: city.name,
+          ts: now
+        };
+        weatherData[cityId] = entry;
+        try { localStorage.setItem(WEATHER_CACHE_PREFIX + cityId, JSON.stringify(entry)); } catch (e) {}
+        return entry;
+      }
+    } catch (e) {
+      lastErr = e.message || lastErr;
+    }
+
+    weatherData[cityId] = { temp: "?", icon: "⚠️", desc: lastErr, name: city.name, ts: 0 };
     return null;
   }
 
